@@ -72,7 +72,7 @@ def train(model, train_loader, epoch = 50, lr = 2e-4):
             loss.backward()
             opti.step()
 
-            L+=loss.detach().numpy()
+            L+=loss.detach().cpu().numpy()
         print(L/len(train_loader))
 
 

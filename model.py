@@ -9,85 +9,21 @@ from sklearn.metrics import accuracy_score
 import numpy as np
 import os
 
-import ipdb
-
-
-def cluster_acc(Y_pred, Y):
-    from sklearn.utils.linear_assignment_ import linear_assignment
-    assert Y_pred.size == Y.size
-    D = max(Y_pred.max(), Y.max())+1
-    w = np.zeros((D,D), dtype=np.int64)
-    for i in range(Y_pred.size):
-        w[Y_pred[i], Y[i]] += 1
-    ind = linear_assignment(w.max() - w)
-    return sum([w[i,j] for i,j in ind])*1.0/Y_pred.size, w
-
-
-def block(in_c,out_c):
-    layers=[
-        nn.Linear(in_c,out_c),
-        nn.ReLU(True)
-    ]
-    return layers
-
-class Encoder(nn.Module):
-    def __init__(self,input_dim=784,inter_dims=[500,500,2000],hid_dim=10):
-        super(Encoder,self).__init__()
-
-        self.encoder=nn.Sequential(
-            *block(input_dim,inter_dims[0]),
-            *block(inter_dims[0],inter_dims[1]),
-            *block(inter_dims[1],inter_dims[2]),
-        )
-
-        self.mu_l=nn.Linear(inter_dims[-1],hid_dim)
-        self.log_sigma2_l=nn.Linear(inter_dims[-1],hid_dim)
-
-    def forward(self, x):
-        e=self.encoder(x)
-
-        mu=self.mu_l(e)
-        log_sigma2=self.log_sigma2_l(e)
-
-        return mu,log_sigma2
-
-
-class Decoder(nn.Module):
-    def __init__(self,input_dim=784,inter_dims=[500,500,2000],hid_dim=10):
-        super(Decoder,self).__init__()
-
-        self.decoder=nn.Sequential(
-            *block(hid_dim,inter_dims[-1]),
-            *block(inter_dims[-1],inter_dims[-2]),
-            *block(inter_dims[-2],inter_dims[-3]),
-            nn.Linear(inter_dims[-3],input_dim),
-            nn.Sigmoid()
-        )
-
-
-
-    def forward(self, z):
-        x_pro=self.decoder(z)
-
-        return x_pro
-
 
 class VaDE(nn.Module):
-    def __init__(self, nClusters = 10, hid_dim = 10, input_dim = 784):
+    def __init__(self,nClusters, hid_dim, input_dim = 100):
         super(VaDE,self).__init__()
         self.encoder=Encoder(input_dim)
         self.decoder=Decoder(input_dim)
-        self.nClusters = nClusters
 
         self.pi_=nn.Parameter(torch.FloatTensor(nClusters,).fill_(1)/nClusters,requires_grad=True)
         self.mu_c=nn.Parameter(torch.FloatTensor(nClusters,hid_dim).fill_(0),requires_grad=True)
         self.log_sigma2_c=nn.Parameter(torch.FloatTensor(nClusters,hid_dim).fill_(0),requires_grad=True)
+        self.nClusters = nClusters
 
 
     def pre_train(self,dataloader,pre_epoch=10):
-
         if  not os.path.exists('./pretrain_model.pk'):
-
             Loss=nn.MSELoss()
             opti=Adam(itertools.chain(self.encoder.parameters(),self.decoder.parameters()))
 
@@ -130,10 +66,7 @@ class VaDE(nn.Module):
             self.log_sigma2_c.data = torch.log(torch.from_numpy(gmm.covariances_).float())
 
             torch.save(self.state_dict(), './pretrain_model.pk')
-
         else:
-
-
             self.load_state_dict(torch.load('./pretrain_model.pk'))
 
 
@@ -157,34 +90,32 @@ class VaDE(nn.Module):
         L_rec=0
 
         z_mu, z_sigma2_log = self.encoder(x)
+        #print("z_mu:", torch.sum(torch.isnan(z_mu)))
+        #print("z_sigma2_log:", torch.sum(torch.isnan(z_sigma2_log)))
         for l in range(L):
 
             z=torch.randn_like(z_mu)*torch.exp(z_sigma2_log/2)+z_mu
 
             x_pro=self.decoder(z)
-
-            L_rec+=F.binary_cross_entropy(x_pro,x)
-
+            #L_rec+=F.binary_cross_entropy(x_pro,x)
+            L_rec+=F.mse_loss(x_pro, x)
+        #print("L_rec:", torch.isnan(L_rec))
         L_rec/=L
-
         Loss=L_rec*x.size(1)
-
-        pi=self.pi_
+        pi=self.pi_ * (self.pi_ > 0) + 1e-5
         log_sigma2_c=self.log_sigma2_c
         mu_c=self.mu_c
-
+    
         z = torch.randn_like(z_mu) * torch.exp(z_sigma2_log / 2) + z_mu
         yita_c=torch.exp(torch.log(pi.unsqueeze(0))+self.gaussian_pdfs_log(z,mu_c,log_sigma2_c))+det
-
+        #print("pi", pi.unsqueeze(0))
         yita_c=yita_c/(yita_c.sum(1).view(-1,1))#batch_size*Clusters
-
-        Loss+=0.5*torch.mean(torch.sum(yita_c*torch.sum(log_sigma2_c.unsqueeze(0)+
+        
+        Loss+=2 * 0.5*torch.mean(torch.sum(yita_c*torch.sum(log_sigma2_c.unsqueeze(0)+
                                                 torch.exp(z_sigma2_log.unsqueeze(1)-log_sigma2_c.unsqueeze(0))+
                                                 (z_mu.unsqueeze(1)-mu_c.unsqueeze(0)).pow(2)/torch.exp(log_sigma2_c.unsqueeze(0)),2),1))
-
+        #print("loss1:", torch.isnan(Loss))
         Loss-=torch.mean(torch.sum(yita_c*torch.log(pi.unsqueeze(0)/(yita_c)),1))+0.5*torch.mean(torch.sum(1+z_sigma2_log,1))
-
-
         return Loss
 
 
@@ -205,4 +136,47 @@ class VaDE(nn.Module):
     def gaussian_pdf_log(x,mu,log_sigma2):
         return -0.5*(torch.sum(np.log(np.pi*2)+log_sigma2+(x-mu).pow(2)/torch.exp(log_sigma2),1))
 
+def block(in_c,out_c):
+    layers=[
+        nn.Linear(in_c,out_c),
+        nn.ReLU(True)
+    ]
+    return layers
 
+class Encoder(nn.Module):
+    def __init__(self,input_dim=100,inter_dims=[50,50,200],hid_dim=10):
+        super(Encoder,self).__init__()
+
+        self.encoder=nn.Sequential(
+            *block(input_dim,inter_dims[0]),
+            *block(inter_dims[0],inter_dims[1]),
+            *block(inter_dims[1],inter_dims[2]),
+        )
+
+        self.mu_l=nn.Linear(inter_dims[-1],hid_dim)
+        self.log_sigma2_l=nn.Linear(inter_dims[-1],hid_dim)
+
+    def forward(self, x):
+        e=self.encoder(x)
+        mu=self.mu_l(e)
+        log_sigma2=self.log_sigma2_l(e)
+
+        return mu,log_sigma2
+
+
+class Decoder(nn.Module):
+    def __init__(self,input_dim=100,inter_dims=[200,50,50],hid_dim=10):
+        super(Decoder,self).__init__()
+
+        self.decoder=nn.Sequential(
+            *block(hid_dim,inter_dims[-1]),
+            *block(inter_dims[-1],inter_dims[-2]),
+            *block(inter_dims[-2],inter_dims[-3]),
+            nn.Linear(inter_dims[-3],input_dim),
+            #nn.Sigmoid()
+        )
+
+    def forward(self, z):
+        x_pro=self.decoder(z)
+
+        return x_pro

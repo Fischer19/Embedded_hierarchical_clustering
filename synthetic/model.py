@@ -159,7 +159,7 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self,input_dim=100,inter_dims=[200,50,50],hid_dim=10):
+    def __init__(self,input_dim=100,inter_dims=[50,50,200],hid_dim=10):
         super(Decoder,self).__init__()
 
         self.decoder=nn.Sequential(

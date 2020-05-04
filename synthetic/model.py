@@ -23,57 +23,46 @@ class VaDE(nn.Module):
 
 
     def pre_train(self,dataloader,pre_epoch=10):
+        Loss=nn.MSELoss()
+        opti=Adam(itertools.chain(self.encoder.parameters(),self.decoder.parameters()))
 
-        if  not os.path.exists('./pretrain_model.pk'):
+        print('Pretraining......')
+        epoch_bar=tqdm(range(pre_epoch))
+        for _ in epoch_bar:
+            L=0
+            for x in dataloader:
+                z,_=self.encoder(x)
+                x_=self.decoder(z)
+                loss=Loss(x,x_)
 
-            Loss=nn.MSELoss()
-            opti=Adam(itertools.chain(self.encoder.parameters(),self.decoder.parameters()))
+                L+=loss.detach().cpu().numpy()
 
-            print('Pretraining......')
-            epoch_bar=tqdm(range(pre_epoch))
-            for _ in epoch_bar:
-                L=0
-                for x in dataloader:
-                    z,_=self.encoder(x)
-                    x_=self.decoder(z)
-                    loss=Loss(x,x_)
+                opti.zero_grad()
+                loss.backward()
+                opti.step()
 
-                    L+=loss.detach().cpu().numpy()
+            epoch_bar.write('L2={:.4f}'.format(L/len(dataloader)))
 
-                    opti.zero_grad()
-                    loss.backward()
-                    opti.step()
+        self.encoder.log_sigma2_l.load_state_dict(self.encoder.mu_l.state_dict())
 
-                epoch_bar.write('L2={:.4f}'.format(L/len(dataloader)))
-
-            self.encoder.log_sigma2_l.load_state_dict(self.encoder.mu_l.state_dict())
-
-            Z = []
-            with torch.no_grad():
-                for x in dataloader:
-                    z1, z2 = self.encoder(x)
-                    assert F.mse_loss(z1, z2) == 0
-                    Z.append(z1)
+        Z = []
+        with torch.no_grad():
+            for x in dataloader:
+                z1, z2 = self.encoder(x)
+                assert F.mse_loss(z1, z2) == 0
+                Z.append(z1)
 
 
-            Z = torch.cat(Z, 0).detach().cpu().numpy()
+        Z = torch.cat(Z, 0).detach().cpu().numpy()
 
-            gmm = GaussianMixture(n_components=self.nClusters, covariance_type='diag')
+        gmm = GaussianMixture(n_components=self.nClusters, covariance_type='diag')
 
-            pre = gmm.fit_predict(Z)
-
-
-            self.pi_.data = torch.from_numpy(gmm.weights_).float()
-            self.mu_c.data = torch.from_numpy(gmm.means_).float()
-            self.log_sigma2_c.data = torch.log(torch.from_numpy(gmm.covariances_).float())
-
-            torch.save(self.state_dict(), './pretrain_model.pk')
-
-        else:
+        pre = gmm.fit_predict(Z)
 
 
-            self.load_state_dict(torch.load('./pretrain_model.pk'))
-
+        self.pi_.data = torch.from_numpy(gmm.weights_).float()
+        self.mu_c.data = torch.from_numpy(gmm.means_).float()
+        self.log_sigma2_c.data = torch.log(torch.from_numpy(gmm.covariances_).float())
 
 
 

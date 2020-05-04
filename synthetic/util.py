@@ -3,12 +3,77 @@ import scipy
 from scipy import cluster
 
 import numpy as np
+import torch
 
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.manifold import TSNE
 import scipy
 from scipy.cluster.hierarchy import linkage, dendrogram
+from tqdm import tqdm
+
+# evaluation:
+def compute_purity_average(data, cla, n_class = 8,  num = 1024, repeat = 50, method = "ward", VERBOSE = False):
+    purity = []
+    for i in range(repeat):
+        if i % 10 == 0 and VERBOSE:
+            print("{:4.2f}% finished".format(i/repeat * 100))
+        index = np.random.choice(np.arange(len(data)), num)
+        Z = linkage(data[index], method)
+        purity.append(compute_purity(Z, cla[index], n_class))
+    purity = np.array(purity)
+    return np.mean(purity), np.std(purity)
+
+def compute_MW_objective_average(model, data, cla, num = 1024, repeat = 50, method = "ward", VERBOSE = False):
+    MW = []
+    for i in range(repeat):
+        if i % 10 == 0 and VERBOSE:
+            print("{:4.2f}% finished".format(i/repeat * 100))
+        index = np.random.choice(np.arange(len(data)), num)
+        Z = linkage(cla[index].reshape(-1,1), method)
+        rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z, rd=True)
+        max = compute_objective_gt(num, rootnode, cla[index])
+        Z = linkage(data[index], method)
+        rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z, rd=True)
+        MW.append(compute_objective_gt(num, rootnode, cla[index]) / max)
+    MW = np.array(MW)
+    return np.mean(MW), np.std(MW)
+
+def compute_class_dist(xi, xj):
+    dist = 0
+    for item_x in xi:
+        for item_y in xj:
+            dist += np.linalg.norm(item_x - item_y)
+    return dist / (len(xi) * len(xj))
+
+def compute_pairwise_dist(data, cla, k, num):
+    distance_dict = []
+    for i in range(k):
+        index1 = np.where(cla == i)
+        dist_k = []
+        for j in range(k):
+            index2 = np.where(cla == j)
+            dist_k.append(compute_class_dist(data[index1],data[index2]))
+        distance_dict.append(dist_k)
+    return np.array(distance_dict)
+
+# VaDE training：
+def train(model, train_loader, epoch = 50, lr = 2e-4):
+    opti=torch.optim.Adam(model.parameters(),lr = lr)
+    epoch_bar=tqdm(range(epoch))
+    for epoch in epoch_bar:
+
+        L=0
+        for x in train_loader:
+
+            loss=model.ELBO_Loss(x)
+
+            opti.zero_grad()
+            loss.backward()
+            opti.step()
+
+            L+=loss.detach().numpy()
+        print(L/len(train_loader))
 
 
 # synthetic datset generation
@@ -61,8 +126,7 @@ def create_data_loader(size = 400, n_class = 16, margin = 8, var = 1, dim = 100,
     cla = cla[perm]
     for i in range(size):    
         train_loader.append(torch.from_numpy(synthetic_data[i*num_batch:(i+1)*num_batch]).float())
-    return train_loader
-
+    return train_loader, synthetic_data, cla
 
 # MW objective related:
 

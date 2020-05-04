@@ -39,7 +39,7 @@ if __name__ == "__main__":
     # train VaDE
     model = VaDE(N_CLASS, HID_DIM, DIM)
     model.pre_train(train_loader,pre_epoch=50)
-    train(model, train_loader, 80)
+    train(model, train_loader, 50)
     torch.save(model.state_dict(), "VaDE_parameters_C{}_M{}.pth".format(args.n_class, args.margin))
     #model.load_state_dict(torch.load("VaDE_parameters.pth"))
     # begin evaluation 

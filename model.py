@@ -95,8 +95,7 @@ class VaDE(nn.Module):
             epoch_bar=tqdm(range(pre_epoch))
             for _ in epoch_bar:
                 L=0
-                for x,y in dataloader:
-
+                for x in dataloader:
                     z,_=self.encoder(x)
                     x_=self.decoder(z)
                     loss=Loss(x,x_)
@@ -112,26 +111,23 @@ class VaDE(nn.Module):
             self.encoder.log_sigma2_l.load_state_dict(self.encoder.mu_l.state_dict())
 
             Z = []
-            Y = []
             with torch.no_grad():
-                for x, y in dataloader:
-
+                for x in dataloader:
                     z1, z2 = self.encoder(x)
                     assert F.mse_loss(z1, z2) == 0
                     Z.append(z1)
-                    Y.append(y)
+
 
             Z = torch.cat(Z, 0).detach().cpu().numpy()
-            Y = torch.cat(Y, 0).detach().numpy()
 
             gmm = GaussianMixture(n_components=self.nClusters, covariance_type='diag')
 
             pre = gmm.fit_predict(Z)
-            print('Acc={:.4f}%'.format(cluster_acc(pre, Y)[0] * 100))
 
-            self.pi_.data = torch.from_numpy(gmm.weights_).cuda().float()
-            self.mu_c.data = torch.from_numpy(gmm.means_).cuda().float()
-            self.log_sigma2_c.data = torch.log(torch.from_numpy(gmm.covariances_).cuda().float())
+
+            self.pi_.data = torch.from_numpy(gmm.weights_).float()
+            self.mu_c.data = torch.from_numpy(gmm.means_).float()
+            self.log_sigma2_c.data = torch.log(torch.from_numpy(gmm.covariances_).float())
 
             torch.save(self.state_dict(), './pretrain_model.pk')
 

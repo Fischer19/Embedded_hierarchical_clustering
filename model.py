@@ -134,9 +134,6 @@ class VaDE(nn.Module):
 
     @staticmethod
     def gaussian_pdf_log(x,mu,log_sigma2):
-        print(x)
-        print(mu)
-        print(log_sigma2)
         return -0.5*(torch.sum(np.log(np.pi*2)+log_sigma2+(x-mu).pow(2)/torch.exp(log_sigma2),1))
 
 def block(in_c,out_c):

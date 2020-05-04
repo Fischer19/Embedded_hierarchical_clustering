@@ -7,15 +7,17 @@ from model import *
 from util import *
 from sklearn import datasets
 
+
+device = "cuda"
 print("###################EXPERIMENTS ON COVERTYPE#########################")
 cover_data, cover_targets = datasets.fetch_covtype(data_home=None, download_if_missing=True, random_state=None, shuffle=False, return_X_y=True)
 print(cover_data.shape, cover_targets.shape)
 train_loader = []
 cla = cover_targets
 for i in range(cover_data.shape[0]//100):    
-    train_loader.append(torch.from_numpy(cover_data[i*100:(i+1)*100]).float())
+    train_loader.append(torch.from_numpy(cover_data[i*100:(i+1)*100]).float().to(device))
 
-model = VaDE(7, 10, 54)
+model = VaDE(7, 10, 54).to(device)
 model.pre_train(train_loader, 50)
 train(model, train_loader, 100)
 torch.save(model.state_dict(), "covertype_VaDE_parameters.pth")

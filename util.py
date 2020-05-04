@@ -1,75 +1,134 @@
 import numpy as np
 import scipy
 from scipy import cluster
-# VAE related:
 
 import numpy as np
+import torch
 
-def intra_inter_class_distance(cla1, cla2, num, embedded = False, plot = True, metric = "euclidean"):      
-    data1 = np.array(class_dic[cla1][:num]).reshape(-1, 28*28)
-    data2 = np.array(class_dic[cla2][:num]).reshape(-1, 28*28)
-    if embedded:
-        _, data1,_= vae(torch.from_numpy(data1).float())
-        _, data2,_= vae(torch.from_numpy(data2).float())
-        data1 = data1.detach().numpy()
-        data2 = data2.detach().numpy()
-    dist1 = []
-    dist2 = []
-    inter_dist = []
-    for i in range(len(data1)):
-        for j in range(len(data1)):
-            x1 = data1[i]
-            x2 = data1[j]
-            if metric == "euclidean":
-                dist1.append(np.linalg.norm(x1 - x2))
-            if metric == "cosine":
-                dist1.append(scipy.spatial.distance.cosine(x1, x2))
-    for i in range(len(data2)):
-        for j in range(len(data2)):
-            x1 = data2[i]
-            x2 = data2[j]
-            if metric == "euclidean":
-                dist2.append(np.linalg.norm(x1 - x2))
-            if metric == "cosine":
-                dist2.append(scipy.spatial.distance.cosine(x1, x2))
-    for i in range(len(data1)):
-        for j in range(len(data2)):
-            x1 = data1[i]
-            x2 = data2[j]
-            if metric == "euclidean":
-                inter_dist.append(np.linalg.norm(x1 - x2))
-            if metric == "cosine":
-                inter_dist.append(scipy.spatial.distance.cosine(x1, x2))
-    if plot:
-        _,_,_ = plt.hist(dist1, np.arange(200) * 1.2 * np.max(dist1)//200, histtype="step", label = cla1 + " "+ metric)
-        _,_,_ = plt.hist(dist2, np.arange(200) * 1.2 * np.max(dist1)//200, histtype="step", label = cla2 + " "+ metric)
-        _,_,_ = plt.hist(inter_dist, np.arange(200) * 1.2 * np.max(dist1)//200, histtype="step", label = cla1 + "-" + cla2 + " "+ metric)
-        plt.legend()
-        plt.show()        
-    return np.array(dist1), np.array(dist2), np.array(inter_dist)
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.manifold import TSNE
+import scipy
+from scipy.cluster.hierarchy import linkage, dendrogram
+from tqdm import tqdm
 
-def plot_two_hist(cla1, cla2, num, metric = "euclidean"):
-    fig ,ax = plt.subplots(1,2, figsize = (15, 8))
-    dist1, dist2, inter_dist = intra_inter_class_distance(cla1, cla2, num, False, False, metric)
-    if metric == "euclidean":
-        bins = np.arange(200) * 1.2 * np.max(dist1)//200
-    if metric == "cosine":
-        bins = np.arange(-100, 100) * 1.2 * np.max(dist1)/100
-    ax[0].hist(dist1, bins, histtype="step", label = cla1 + " " + metric)
-    ax[0].hist(dist2, bins, histtype="step", label = cla2 + " " + metric)
-    ax[0].hist(inter_dist, bins, histtype="step", label = cla1 + "+" + cla2 + " " + metric)
-    ax[0].legend()
-    dist1, dist2, inter_dist = intra_inter_class_distance(cla1, cla2, num, True, False, metric)
-    if metric == "euclidean":
-        bins = np.arange(200) * 1.2 * np.max(dist1)//200
-    if metric == "cosine":
-        bins = np.arange(-100, 100) * 1.2 * np.max(dist1)/100
-    ax[1].hist(dist1, bins, histtype="step", label = cla1 + " " + metric)
-    ax[1].hist(dist2, bins, histtype="step", label = cla2 + " " + metric)
-    ax[1].hist(inter_dist, bins, histtype="step", label = cla1 + "+" + cla2 + " " + metric)
-    ax[1].legend()
+# evaluation:
+def compute_purity_average(data, cla, n_class = 8,  num = 1024, repeat = 50, method = "ward", VERBOSE = False):
+    purity = []
+    for i in range(repeat):
+        if i % 10 == 0 and VERBOSE:
+            print("{:4.2f}% finished".format(i/repeat * 100))
+        index = np.random.choice(np.arange(len(data)), num)
+        Z = linkage(data[index], method)
+        purity.append(compute_purity(Z, cla[index], n_class))
+    purity = np.array(purity)
+    return np.mean(purity), np.std(purity)
+
+def compute_MW_objective_average(model, data, cla, num = 1024, repeat = 50, method = "ward", VERBOSE = False):
+    MW = []
+    for i in range(repeat):
+        if i % 10 == 0 and VERBOSE:
+            print("{:4.2f}% finished".format(i/repeat * 100))
+        index = np.random.choice(np.arange(len(data)), num)
+        Z = linkage(cla[index].reshape(-1,1), method)
+        rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z, rd=True)
+        max = compute_objective_gt(num, rootnode, cla[index])
+        Z = linkage(data[index], method)
+        rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z, rd=True)
+        MW.append(compute_objective_gt(num, rootnode, cla[index]) / max)
+    MW = np.array(MW)
+    return np.mean(MW), np.std(MW)
+
+def compute_class_dist(xi, xj):
+    dist = 0
+    for item_x in xi:
+        for item_y in xj:
+            dist += np.linalg.norm(item_x - item_y)
+    return dist / (len(xi) * len(xj))
+
+def compute_pairwise_dist(data, cla, k, num):
+    distance_dict = []
+    for i in range(k):
+        index1 = np.where(cla == i)
+        dist_k = []
+        for j in range(k):
+            index2 = np.where(cla == j)
+            dist_k.append(compute_class_dist(data[index1],data[index2]))
+        distance_dict.append(dist_k)
+    return np.array(distance_dict)
+
+# VaDE training：
+def train(model, train_loader, epoch = 50, lr = 2e-4):
+    opti=torch.optim.Adam(model.parameters(),lr = lr)
+    epoch_bar=tqdm(range(epoch))
+    for epoch in epoch_bar:
+
+        L=0
+        for x in train_loader:
+
+            loss=model.ELBO_Loss(x)
+
+            opti.zero_grad()
+            loss.backward()
+            opti.step()
+
+            L+=loss.detach().numpy()
+        print(L/len(train_loader))
 
 
+# synthetic datset generation
+
+def HGMM(n_class, dim, margin):
+    margin = margin
+    mean = np.zeros((n_class , dim))
+    #mean[:(n_class // 2), 0] = margin
+    #mean[(n_class // 2):, 0] = -margin
+    ratio = n_class // 2
+    index = 0
+    while ratio != 0:
+        for i in range(int(n_class // ratio)):
+            mean[i*ratio:(i+1)*ratio, index] = (-1) ** i * margin / (2**index)
+        #for i in range(8):
+            #mean[i*1:(i+1)*1, 2] = (-1) ** i * margin / 4
+        ratio = ratio // 2
+        index += 1
+    return mean
+
+def gen_synthetic(dim, margin, n_class, var, num =100):
+    mean = HGMM(n_class, dim, margin)
+    data = np.random.multivariate_normal(mean[0], np.identity(dim), num)
+    cla = np.zeros(num)
+    for i in range(1, n_class):
+        cla = np.concatenate([cla, i*np.ones(num)])
+        data = np.concatenate([data, np.random.multivariate_normal(mean[i], var * np.identity(dim), num)])
+    print(data.shape)
+    return data, cla
+
+def synthetic_tSNE(n_class, margin, var, dim = 100, num = 100, random_proj = False):
+    data, cla = gen_synthetic(dim, margin, n_class, var, num = num)
+    if random_proj:
+        proj = np.random.randn(dim, dim)
+        data = data.dot(proj)
+    z = TSNE(n_components=2).fit_transform(data)
+    if n_class < 10:
+        sns.set(rc={'figure.figsize':(11.7,8.27)})
+        sns.scatterplot(z[:, 0], z[:, 1], hue = np.array(cla),  palette = sns.color_palette("Paired", n_class),  legend = "full")
+    else:
+        sns.set(rc={'figure.figsize':(11.7,8.27)})
+        sns.scatterplot(z[:, 0], z[:, 1], hue = np.array(cla), legend = "full")
+        
+def create_data_loader(size = 400, n_class = 16, margin = 8, var = 1, dim = 100, num_per_class = 2000):
+    num_batch = n_class * num_per_class // size
+    synthetic_data, cla = gen_synthetic(dim, margin, n_class, var, num_per_class)
+    train_loader = []
+    perm = np.random.permutation(n_class * num_per_class)
+    synthetic_data = synthetic_data[perm]
+    cla = cla[perm]
+    for i in range(size):    
+        train_loader.append(torch.from_numpy(synthetic_data[i*num_batch:(i+1)*num_batch]).float())
+    return train_loader, synthetic_data, cla
+
+# MW objective related:
 
 class node(cluster.hierarchy.ClusterNode):
     def __init__(self, id, left=None, right=None, dist=0, count=1):
@@ -152,47 +211,6 @@ def compute_purity(Z, target, target_num = 10):
 
 
 # ------ random cut related ------
-
-class Binary_Tree():
-    
-    def __init__(self, left = None, right = None):
-        assert isinstance(left, Binary_Tree) or (left == None) or isinstance(left, Leaf_node)
-        assert isinstance(right, Binary_Tree) or (right == None) or isinstance(right, Leaf_node)
-        self.right = right
-        self.left = left
-        
-    def set_right(self, right):
-        assert isinstance(right, Binary_Tree) or (right == None) or isinstance(right, Leaf_node)
-        self.right = right
-        
-    def set_left(self, left):
-        assert isinstance(left, Binary_Tree) or (left == None) or isinstance(left, Leaf_node)
-        self.left = left
-        
-class Leaf_node():
-    def __init__(self, value):
-        self.value = value
-        
-def random_cut(n, data_list):
-    if n == 1:
-        return Leaf_node(data_list[0])
-    else:
-        a1 = min(data_list)
-        an = max(data_list)
-        data_right = []
-        data_left = []
-        m = 0
-        r = np.random.uniform(a1, an)
-        for d in data_list:
-            if d < r:
-                data_left.append(d)
-                m += 1
-            else:
-                data_right.append(d)
-        x = Binary_Tree()
-        x.set_right(random_cut(n - m, data_right))
-        x.set_left(random_cut(m, data_left))
-        return x
     
 def list_leaves(node):
     if node.is_leaf():
@@ -308,164 +326,3 @@ def sum_objective(data):
                 result += Gaussian_similarity(data[i], data[j]) + Gaussian_similarity(data[j], data[k])
                 
     return result 
-
-def estimate_variance(data):
-    result = 0
-    for i in range(len(data)):
-        for j in range(i + 1, len(data)):
-            for k in range(j + 1, len(data)):
-                result += 1 / 4 * (Gaussian_similarity(data[i], data[j]) - Gaussian_similarity(data[j], data[k])) ** 2
-    return result
-
-def run_random_cut(data, max_obj):    
-    root = random_cut(len(data), data)
-    return compute_objective_plus(len(data), root)
-
-def gen_data(k, n, mu, sigma):
-    data = np.array([])
-    for i in range(k):
-        data = np.concatenate((np.random.normal(mu[i], sigma[i], n), data))
-    return data
-
-def preprocess(data):
-    data = np.sort(data)
-    n = len(data)
-    result = np.zeros((n,n))
-    for i in range(n):
-        for j in range(n):
-            result[i, j] = Gaussian_similarity(data[i], data[j])
-    return result
-
-
-def compute_revenue(data):
-    n = len(data)
-    result = 0
-    for i in range(n):
-        for j in range(i + 1, n):
-            result += Gaussian_similarity(data[i], data[j])
-    return result
-
-def random_cut_plus(n, data_list, whole_data, dic):
-    if n == 1:
-        return Leaf_node(data_list[0])
-    else:
-        a1 = min(data_list)
-        an = max(data_list)
-        max_revenue = 0
-        max_r = 0
-        max_data_right = []
-        max_data_left = []
-        for i in range(16):
-            revenue = 0
-            r = np.random.uniform(a1, an)
-            m = 0
-            data_right = []
-            data_left = []
-            for d in data_list:
-                if d <= r:
-                    data_left.append(d)
-                    m += 1
-                else:
-                    data_right.append(d)
-            revenue += m * compute_revenue(data_right)
-            revenue += (n - m) * compute_revenue(data_left)
-            #print(m, n, compute_revenue(data_right, whole_data, dic), compute_revenue(data_left, whole_data, dic))
-            if revenue > max_revenue:
-                max_revenue = revenue
-                max_r = r
-                max_data_right = data_right
-                max_data_left = data_left
-        if max_revenue == 0:
-            max_data_right = data_right
-            max_data_left = data_left
-
-        x = Binary_Tree()
-        m = len(max_data_left)
-        x.set_right(random_cut_plus(n - m, max_data_right, whole_data, dic))
-        x.set_left(random_cut_plus(m, max_data_left, whole_data, dic))
-        return x
-    
-def random_cut_plus_with_objective(n, data_list, whole_data, dic):
-    if n == 1:
-        return Leaf_node(data_list[0]), 0
-    else:
-        a1 = min(data_list)
-        an = max(data_list)
-        revenue = 0
-        r = np.random.uniform(a1, an)
-        m = 0
-        data_right = []
-        data_left = []
-        for d in data_list:
-            if d <= r:
-                data_left.append(d)
-                m += 1
-            else:
-                data_right.append(d)
-        revenue += m * compute_revenue(data_right)
-        revenue += (n - m) * compute_revenue(data_left)
-        #print(m, n, compute_revenue(data_right, whole_data, dic), compute_revenue(data_left, whole_data, dic))
-
-        x = Binary_Tree()
-        m = len(data_left)
-        right_node, rev_right = random_cut_plus_with_objective(n - m, data_right, whole_data, dic)
-        left_node, rev_left = random_cut_plus_with_objective(m, data_left, whole_data, dic)
-        x.set_right(right_node)
-        x.set_left(left_node)
-        return x, revenue + rev_right + rev_left
-    
-def run_random_cut_plus(data, max_obj, dic = None): 
-    if dic is None:
-        dic = preprocess(data)
-    root = random_cut_plus(len(data), data, data, dic)
-    return compute_objective_plus(len(data), root)
-
-def run_experiment(n, k):
-    data = gen_data(k, n // k, [2 * i for i in range(k)], np.random.uniform(0,1,k))
-    dic = preprocess(data)
-    max_obj = max_objective(data)
-    #sum_obj = sum_objective(data)
-    est_var = estimate_variance(data)
-    obj1 = []
-    obj2 = []
-    for i in range(100):
-        obj1.append(run_random_cut(data, max_obj)/ max_obj)
-        obj2.append(run_random_cut_plus(data, max_obj, dic)/ max_obj)
-    obj1 = np.array(obj1)
-    obj2 = np.array(obj2)
-    return obj1, obj2
-
-def random_cut_1D(n, data_list, index):
-    if n == 1:
-        return Leaf_node(index[0])
-    else:
-        a1 = min(data_list)
-        an = max(data_list)
-        data_right = []
-        data_left = []
-        index_right = []
-        index_left = []
-        m = 0
-        r = np.random.uniform(a1, an)
-        for i, d in enumerate(data_list):
-            if d < r:
-                data_left.append(d)
-                index_left.append(index[i])
-                m += 1
-            else:
-                data_right.append(d)
-                index_right.append(index[i])
-        x = Binary_Tree()
-        x.set_right(random_cut_1D(n - m, data_right, index_right))
-        x.set_left(random_cut_1D(m, data_left, index_left))
-        return x
-
-def projected_random_cut(data):
-    n, d = data.shape
-    dir = np.random.randn(d, 1)
-    norm = np.linalg.norm(dir)
-    dir = dir / norm
-    new_data = data.dot(dir)
-    index = np.arange(n)
-    root = random_cut_1D(n, new_data, index)
-    return root

@@ -64,11 +64,11 @@ class VaDE(nn.Module):
             self.pi_.data = torch.from_numpy(gmm.weights_).float()
             self.mu_c.data = torch.from_numpy(gmm.means_).float()
             self.log_sigma2_c.data = torch.log(torch.from_numpy(gmm.covariances_).float())
-
+        '''
             torch.save(self.state_dict(), './pretrain_model.pk')
         else:
             self.load_state_dict(torch.load('./pretrain_model.pk'))
-
+        '''
 
 
 

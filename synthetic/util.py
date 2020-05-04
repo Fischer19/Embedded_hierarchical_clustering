@@ -78,7 +78,7 @@ def train(model, train_loader, epoch = 50, lr = 2e-4):
 
 # synthetic datset generation
 
-def HGMM(n_class, dim, margin):
+def HGMM(n_class, dim, margin, shift = False):
     margin = margin
     mean = np.zeros((n_class , dim))
     #mean[:(n_class // 2), 0] = margin
@@ -92,10 +92,13 @@ def HGMM(n_class, dim, margin):
             #mean[i*1:(i+1)*1, 2] = (-1) ** i * margin / 4
         ratio = ratio // 2
         index += 1
+    if shift:
+        mean[:n_class//2,3:6] = mean[:n_class//2,:3]
+        mean[:n_class//2,:3] = 0
     return mean
 
 def gen_synthetic(dim, margin, n_class, var, num =100):
-    mean = HGMM(n_class, dim, margin)
+    mean = HGMM(n_class, dim, margin, True)
     data = np.random.multivariate_normal(mean[0], np.identity(dim), num)
     cla = np.zeros(num)
     for i in range(1, n_class):

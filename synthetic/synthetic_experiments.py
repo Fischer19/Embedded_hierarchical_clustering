@@ -48,7 +48,7 @@ if __name__ == "__main__":
         subsample_index = np.concatenate([subsample_index, i * N + np.arange(SUBSAMPLE_SIZE)])
 
     mean, _ = model.encoder(torch.from_numpy(synthetic_data).float())
-    pca = PCA(n_components = 10)
+    pca = PCA(n_components = HID_DIM)
     projection = pca.fit_transform(synthetic_data)
     print("VaDE:", compute_purity_average(mean.detach().numpy(), cla, 8, 1024, 100, method = args.linkage_method))
     print("PCA:", compute_purity_average(projection, cla, 8, 1024, 100, method = args.linkage_method))

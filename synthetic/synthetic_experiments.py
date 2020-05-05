@@ -41,7 +41,7 @@ if __name__ == "__main__":
     model.pre_train(train_loader,pre_epoch=50)
     train(model, train_loader, 50)
     torch.save(model.state_dict(), "VaDE_parameters_C{}_M{}.pth".format(args.n_class, args.margin))
-    #model.load_state_dict(torch.load("VaDE_parameters.pth"))
+    #model.load_state_dict(torch.load("VaDE_parameters_C{}_M{}.pth".format(args.n_class, args.margin)))
     # begin evaluation 
     subsample_index = np.arange(100)
     for i in range(1, N_CLASS):
@@ -50,10 +50,10 @@ if __name__ == "__main__":
     mean, _ = model.encoder(torch.from_numpy(synthetic_data).float())
     pca = PCA(n_components = HID_DIM)
     projection = pca.fit_transform(synthetic_data)
-    print("VaDE:", compute_purity_average(mean.detach().numpy(), cla, N_CLASS, 1024, 100, method = args.linkage_method))
-    print("PCA:", compute_purity_average(projection, cla, N_CLASS, 1024, 100, method = args.linkage_method))
-    print("Origin:", compute_purity_average(synthetic_data, cla, N_CLASS, 1024, 100, method = args.linkage_method))
+    print("VaDE:", compute_purity_average(mean.detach().numpy(), cla, N_CLASS, 2048, 50, method = args.linkage_method))
+    print("PCA:", compute_purity_average(projection, cla, N_CLASS, 2048, 50, method = args.linkage_method))
+    print("Origin:", compute_purity_average(synthetic_data, cla, N_CLASS, 2048, 50, method = args.linkage_method))
     
-    print(compute_MW_objective_average(model, mean.detach().numpy(), cla, 1024, 100, method = args.linkage_method))
-    print(compute_MW_objective_average(model, projection, cla, 1024, 100, method = args.linkage_method))
-    print(compute_MW_objective_average(model, synthetic_data, cla, 1024, 100, method = args.linkage_method))
+    print(compute_MW_objective_average(model, mean.detach().numpy(), cla, 2048, 50, method = args.linkage_method))
+    print(compute_MW_objective_average(model, projection, cla, 2048, 50, method = args.linkage_method))
+    print(compute_MW_objective_average(model, synthetic_data, cla, 2048, 50, method = args.linkage_method))

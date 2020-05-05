@@ -97,8 +97,8 @@ def HGMM(n_class, dim, margin, shift = False):
         mean[:n_class//2,:index] = 0
     return mean
 
-def gen_synthetic(dim, margin, n_class, var, num =100):
-    mean = HGMM(n_class, dim, margin, True)
+def gen_synthetic(dim, margin, n_class, var, num =100, shift = False):
+    mean = HGMM(n_class, dim, margin, shift)
     data = np.random.multivariate_normal(mean[0], np.identity(dim), num)
     cla = np.zeros(num)
     for i in range(1, n_class):
@@ -122,7 +122,7 @@ def synthetic_tSNE(n_class, margin, var, dim = 100, num = 100, random_proj = Fal
         
 def create_data_loader(size = 400, n_class = 16, margin = 8, var = 1, dim = 100, num_per_class = 2000):
     num_batch = n_class * num_per_class // size
-    synthetic_data, cla = gen_synthetic(dim, margin, n_class, var, num_per_class)
+    synthetic_data, cla = gen_synthetic(dim, margin, n_class, var, num_per_class, True)
     train_loader = []
     perm = np.random.permutation(n_class * num_per_class)
     synthetic_data = synthetic_data[perm]

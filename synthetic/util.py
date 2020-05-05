@@ -93,8 +93,8 @@ def HGMM(n_class, dim, margin, shift = False):
         ratio = ratio // 2
         index += 1
     if shift:
-        mean[:n_class//2,3:6] = mean[:n_class//2,:3]
-        mean[:n_class//2,:3] = 0
+        mean[:n_class//2,index:index + index] = mean[:n_class//2,:index]
+        mean[:n_class//2,:index] = 0
     return mean
 
 def gen_synthetic(dim, margin, n_class, var, num =100):

@@ -50,9 +50,9 @@ if __name__ == "__main__":
     mean, _ = model.encoder(torch.from_numpy(synthetic_data).float())
     pca = PCA(n_components = HID_DIM)
     projection = pca.fit_transform(synthetic_data)
-    print("VaDE:", compute_purity_average(mean.detach().numpy(), cla, 8, 1024, 100, method = args.linkage_method))
-    print("PCA:", compute_purity_average(projection, cla, 8, 1024, 100, method = args.linkage_method))
-    print("Origin:", compute_purity_average(synthetic_data, cla, 8, 1024, 100, method = args.linkage_method))
+    print("VaDE:", compute_purity_average(mean.detach().numpy(), cla, N_CLASS, 1024, 100, method = args.linkage_method))
+    print("PCA:", compute_purity_average(projection, cla, N_CLASS, 1024, 100, method = args.linkage_method))
+    print("Origin:", compute_purity_average(synthetic_data, cla, N_CLASS, 1024, 100, method = args.linkage_method))
     
     print(compute_MW_objective_average(model, mean.detach().numpy(), cla, 1024, 100, method = args.linkage_method))
     print(compute_MW_objective_average(model, projection, cla, 1024, 100, method = args.linkage_method))

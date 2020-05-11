@@ -13,8 +13,8 @@ import os
 class VaDE(nn.Module):
     def __init__(self,nClusters, hid_dim, input_dim = 100):
         super(VaDE,self).__init__()
-        self.encoder=Encoder(input_dim)
-        self.decoder=Decoder(input_dim)
+        self.encoder=Encoder(input_dim, hid_dim=hid_dim)
+        self.decoder=Decoder(input_dim, hid_dim=hid_dim)
 
         self.pi_=nn.Parameter(torch.FloatTensor(nClusters,).fill_(1)/nClusters,requires_grad=True)
         self.mu_c=nn.Parameter(torch.FloatTensor(nClusters,hid_dim).fill_(0),requires_grad=True)

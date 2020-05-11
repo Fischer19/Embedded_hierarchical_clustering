@@ -22,12 +22,12 @@ for i in range(len(raw_data)):
     target.append(int(line[-1]))
 data = np.array(data).astype(np.float)
 target = np.array(target)
+cla = target
 model = VaDE(6, 3, 9)
 if  os.path.exists('./pretrained_parameters/parameters_glass.pth'):
     model.load_state_dict(torch.load('./pretrained_parameters/parameters_glass.pth'))
 else:
     train_loader = []
-    cla = target
     for i in range(data.shape[0]):    
         train_loader.append(torch.from_numpy(data[i:i+1]).float())
     model.pre_train(train_loader, 10)
@@ -48,7 +48,7 @@ cla = target
 for i in range(data.shape[0]//10):    
     train_loader.append(torch.from_numpy(data[i*10:(i+1)*10]).float())
 
-model = VaDE(10, 3, 64)
+model = VaDE(10, 10, 64)
 
 if  os.path.exists('./pretrained_parameters/parameters_digits.pth'):
     model.load_state_dict(torch.load('./pretrained_parameters/parameters_digits.pth'))

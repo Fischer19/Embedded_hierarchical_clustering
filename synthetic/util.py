@@ -13,6 +13,14 @@ from scipy.cluster.hierarchy import linkage, dendrogram
 from tqdm import tqdm
 
 # evaluation:
+def transformation(model, data, rate = 2):
+    mean, _ = model.encoder(torch.from_numpy(data).float())
+    pred = model.predict(torch.from_numpy(data).float())
+    cluster_means = model.mu_c[pred]
+    scaled_cluster_means = cluster_means * rate
+    scaled_mean = (mean - cluster_means) + scaled_cluster_means
+    return scaled_mean.detach()
+
 def compute_purity_average(data, cla, n_class = 8,  num = 1024, repeat = 50, method = "ward", VERBOSE = False):
     purity = []
     for i in range(repeat):

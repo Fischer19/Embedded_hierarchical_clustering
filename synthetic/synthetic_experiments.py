@@ -39,7 +39,7 @@ if __name__ == "__main__":
     # train VaDE
     model = VaDE(N_CLASS, HID_DIM, DIM)
     model.pre_train(train_loader,pre_epoch=50)
-    train(model, train_loader, 50)
+    train(model, train_loader, 80)
     torch.save(model.state_dict(), "VaDE_parameters_C{}_M{}.pth".format(args.n_class, args.margin))
     #model.load_state_dict(torch.load("VaDE_parameters_C{}_M{}.pth".format(args.n_class, args.margin)))
     # begin evaluation 
@@ -48,12 +48,15 @@ if __name__ == "__main__":
         subsample_index = np.concatenate([subsample_index, i * N + np.arange(SUBSAMPLE_SIZE)])
 
     mean, _ = model.encoder(torch.from_numpy(synthetic_data).float())
+    scaled_mean = transformation(model, synthetic_data)
     pca = PCA(n_components = HID_DIM)
     projection = pca.fit_transform(synthetic_data)
-    print("VaDE:", compute_purity_average(mean.detach().numpy(), cla, N_CLASS, 2048, 50, method = args.linkage_method))
-    print("PCA:", compute_purity_average(projection, cla, N_CLASS, 2048, 50, method = args.linkage_method))
-    print("Origin:", compute_purity_average(synthetic_data, cla, N_CLASS, 2048, 50, method = args.linkage_method))
+    print("Transform:", compute_purity_average(scaled_mean.detach().numpy(), cla, N_CLASS, 1024, 50, method = args.linkage_method))
+    print("VaDE:", compute_purity_average(mean.detach().numpy(), cla, N_CLASS, 1024, 50, method = args.linkage_method))
+    print("PCA:", compute_purity_average(projection, cla, N_CLASS, 1024, 50, method = args.linkage_method))
+    print("Origin:", compute_purity_average(synthetic_data, cla, N_CLASS, 1024, 50, method = args.linkage_method))
     
-    print(compute_MW_objective_average(model, mean.detach().numpy(), cla, 2048, 50, method = args.linkage_method))
-    print(compute_MW_objective_average(model, projection, cla, 2048, 50, method = args.linkage_method))
-    print(compute_MW_objective_average(model, synthetic_data, cla, 2048, 50, method = args.linkage_method))
+    print(compute_MW_objective_average(model, scaled_mean.detach().numpy(), cla, 1024, 50, method = args.linkage_method))
+    print(compute_MW_objective_average(model, mean.detach().numpy(), cla, 1024, 50, method = args.linkage_method))
+    print(compute_MW_objective_average(model, projection, cla, 1024, 50, method = args.linkage_method))
+    print(compute_MW_objective_average(model, synthetic_data, cla, 1024, 50, method = args.linkage_method))

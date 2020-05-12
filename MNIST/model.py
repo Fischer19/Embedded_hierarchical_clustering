@@ -7,14 +7,14 @@ from torchvision import datasets, transforms
 from sklearn.manifold import TSNE
 import scipy
 from scipy.cluster.hierarchy import linkage, dendrogram
-
+import numpy as np
 
 
 class VaDE(nn.Module):
     def __init__(self, nClusters = 10, hid_dim = 10, input_dim = 784):
         super(VaDE,self).__init__()
-        self.encoder=Encoder(input_dim)
-        self.decoder=Decoder(input_dim)
+        self.encoder=Encoder(input_dim, hid_dim=hid_dim)
+        self.decoder=Decoder(input_dim, hid_dim=hid_dim)
         self.nClusters = nClusters
 
         self.pi_=nn.Parameter(torch.FloatTensor(nClusters,).fill_(1)/nClusters,requires_grad=True)

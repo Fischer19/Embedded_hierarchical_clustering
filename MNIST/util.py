@@ -11,8 +11,17 @@ from tqdm import tqdm
 from sklearn.decomposition import PCA
 
 # evaluation:
-def compute_purity_average(model, data, cla, n_class = 10, num = 1024, repeat = 50, method = "ward", eval = "VaDE", VERBOSE = False):
+def transformation(model, data, rate = 1.5):
+    mean, _ = model.encoder(torch.from_numpy(data).float())
+    pred = model.predict(torch.from_numpy(data).float())
+    cluster_means = model.mu_c[pred]
+    scaled_cluster_means = cluster_means * rate
+    scaled_mean = (mean - cluster_means) + scaled_cluster_means
+    return scaled_mean.detach()
+
+def compute_purity_average(model, data, cla, n_class = 10, num = 1024, repeat = 50, method = "ward", eval = "VaDE", transform = False, VERBOSE = False):
     purity = []
+    print("repeat:", repeat)
     for i in range(repeat):
         if i % 10 == 0 and VERBOSE:
             print("{:4.2f}% finished".format(i/repeat * 100))
@@ -21,8 +30,11 @@ def compute_purity_average(model, data, cla, n_class = 10, num = 1024, repeat = 
             pca = PCA(n_components = 10)
             eval_data = pca.fit_transform(data[index])
         if eval == "VaDE":
-            eval_data, _ = model.encoder(torch.from_numpy(data[index]).float())
-            eval_data = eval_data.detach().numpy()
+            if transform:
+                eval_data = transformation(model, data[index])
+            else:
+                eval_data, _ = model.encoder(torch.from_numpy(data[index]).float())
+                eval_data = eval_data.detach().numpy()
         if eval == "Origin":
             eval_data = data[index]
         Z = linkage(eval_data, method)
@@ -30,8 +42,9 @@ def compute_purity_average(model, data, cla, n_class = 10, num = 1024, repeat = 
     purity = np.array(purity)
     return np.mean(purity), np.std(purity)
 
-def compute_MW_objective_average(model, data, cla, n_class = 10, num = 1024, repeat = 50, method = "ward", eval = "VaDE", VERBOSE = False):
+def compute_MW_objective_average(model, data, cla, n_class = 10, num = 1024, repeat = 50, method = "ward", eval = "VaDE", transform = False, VERBOSE = False):
     MW = []
+    print("repeat:", repeat)
     for i in range(repeat):
         if i % 10 == 0 and VERBOSE:
             print("{:4.2f}% finished".format(i/repeat * 100))
@@ -40,8 +53,11 @@ def compute_MW_objective_average(model, data, cla, n_class = 10, num = 1024, rep
             pca = PCA(n_components = 10)
             eval_data = pca.fit_transform(data[index])
         if eval == "VaDE":
-            eval_data, _ = model.encoder(torch.from_numpy(data[index]).float())
-            eval_data = eval_data.detach().numpy()
+            if transform:
+                eval_data = transformation(model, data[index])
+            else:
+                eval_data, _ = model.encoder(torch.from_numpy(data[index]).float())
+                eval_data = eval_data.detach().numpy()
         if eval == "Origin":
             eval_data = data[index]
         Z = linkage(cla[index].reshape(-1,1), method)

@@ -9,6 +9,7 @@ import scipy
 from scipy.cluster.hierarchy import linkage, dendrogram
 from tqdm import tqdm
 from sklearn.decomposition import PCA
+import sklearn
 
 # evaluation:
 def transformation(model, data, rate = 1.5):

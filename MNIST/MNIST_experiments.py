@@ -21,21 +21,22 @@ if __name__ == "__main__":
     SUBSAMPLE_SIZE = args.subsampling
     dataset = datasets.MNIST('../data', train=True, download=True,
                    transform=transforms.ToTensor())
-    mnist_data, cla = dataset.data.numpy().reshape(-1, 784), dataset.targets.numpy()
+    mnist_data, cla = dataset.data.numpy().reshape(-1, 784) / 255, dataset.targets.numpy()
 
     #generate synthetic data
     model = VaDE()
     model.load_state_dict(torch.load("pretrained_parameters/parameters_vade_linear_10classes_mnist.pth", map_location=torch.device('cpu')))
     # begin evaluation 
-    print("VaDE transformed:", compute_MW_objective_average(model, mnist_data, cla, 10, 1024, 100, eval = "VaDE",transform=True, VERBOSE = True))
-    
-    print("VaDE MW:", compute_MW_objective_average(model, mnist_data, cla, 1024, 100, eval = "VaDE", VERBOSE = True))
-    print("PCA MW:", compute_MW_objective_average(model, mnist_data, cla, 1024, 100, eval = "PCA", VERBOSE = True))
-    print("Origin MW:", compute_MW_objective_average(model, mnist_data, cla, 1024, 100, eval = "Origin", VERBOSE = True))
-
     print("VaDE transformed DP:", compute_purity_average(model, mnist_data, cla, 10, 1024, 100, eval = "VaDE", transform=True, VERBOSE = True))
     print("VaDE DP:", compute_purity_average(model, mnist_data, cla, 10, 1024, 100, eval = "VaDE", VERBOSE = True))
     print("PCA DP:", compute_purity_average(model, mnist_data, cla, 10, 1024, 100, eval = "PCA", VERBOSE = True))
     print("Origin DP:", compute_purity_average(model, mnist_data, cla, 10, 1024, 100, eval = "Origin", VERBOSE = True))
+    
+
+    print("VaDE transformed MW:", compute_MW_objective_average(model, mnist_data, cla, 10, 1024, 100, eval = "VaDE",transform=True, VERBOSE = True))
+    print("VaDE MW:", compute_MW_objective_average(model, mnist_data, cla, 10, 1024, 100, eval = "VaDE", VERBOSE = True))
+    print("PCA MW:", compute_MW_objective_average(model, mnist_data, cla, 10, 1024, 100, eval = "PCA", VERBOSE = True))
+    print("Origin MW:", compute_MW_objective_average(model, mnist_data, cla, 10, 1024, 100, eval = "Origin", VERBOSE = True))
+
     
     

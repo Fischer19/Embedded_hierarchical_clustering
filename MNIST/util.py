@@ -20,16 +20,34 @@ def transformation(model, data, rate = 1.5):
     scaled_mean = (mean - cluster_means) + scaled_cluster_means
     return scaled_mean.detach()
 
-def compute_purity_average(model, data, cla, n_class = 10, num = 1024, repeat = 50, method = "ward", eval = "VaDE", transform = False, VERBOSE = False):
+def compute_purity_average(model, data, cla, n_class = 10, num = 128, repeat = 50, method = "ward", eval = "VaDE", transform = False, VERBOSE = False):
     purity = []
     print("repeat:", repeat)
+    mnist_data = []
+    for i in range(25):
+        index = np.where(cla == i)
+        mnist_data.append(data[index])
+        
     for i in range(repeat):
+        test_X = torch.Tensor([])
+        test_Y = np.array([])
+        for i in range(n_class):
+            index = np.random.choice(np.arange(len(mnist_data[i])), num)
+            test_X = torch.cat([test_X, torch.from_numpy(mnist_data[i][index]).float()])
+            test_Y = np.concatenate([test_Y, i * np.ones(num)])
+            
+        data = test_X.detach().numpy()
+        cla = test_Y
+        
         if i % 10 == 0 and VERBOSE:
             print("{:4.2f}% finished".format(i/repeat * 100))
         index = np.random.choice(np.arange(len(data)), num)
         if eval == "PCA":
             pca = PCA(n_components = 10)
             eval_data = pca.fit_transform(data[index])
+        if eval == "VAE":
+            _, eval_data, _ = model(torch.from_numpy(data[index]).float())
+            eval_data = eval_data.detach().numpy()
         if eval == "VaDE":
             if transform:
                 eval_data = transformation(model, data[index])
@@ -46,13 +64,31 @@ def compute_purity_average(model, data, cla, n_class = 10, num = 1024, repeat = 
 def compute_MW_objective_average(model, data, cla, n_class = 10, num = 1024, repeat = 50, method = "ward", eval = "VaDE", transform = False, VERBOSE = False):
     MW = []
     print("repeat:", repeat)
+    mnist_data = []
+    for i in range(25):
+        index = np.where(cla == i)
+        mnist_data.append(data[index])
+        
     for i in range(repeat):
+        test_X = torch.Tensor([])
+        test_Y = np.array([])
+        for i in range(n_class):
+            index = np.random.choice(np.arange(len(mnist_data[i])), num)
+            test_X = torch.cat([test_X, torch.from_numpy(mnist_data[i][index]).float()])
+            test_Y = np.concatenate([test_Y, i * np.ones(num)])
+            
+        data = test_X.detach().numpy()
+        cla = test_Y
+        
         if i % 10 == 0 and VERBOSE:
             print("{:4.2f}% finished".format(i/repeat * 100))
         index = np.random.choice(np.arange(len(data)), num)
         if eval == "PCA":
             pca = PCA(n_components = 10)
             eval_data = pca.fit_transform(data[index])
+        if eval == "VAE":
+            _, eval_data, _ = model(torch.from_numpy(data[index]).float())
+            eval_data = eval_data.detach().numpy()
         if eval == "VaDE":
             if transform:
                 eval_data = transformation(model, data[index])

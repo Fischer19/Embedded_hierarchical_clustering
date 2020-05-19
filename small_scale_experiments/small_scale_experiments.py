@@ -34,10 +34,12 @@ else:
     train(model, train_loader, 100)
     torch.save(model.state_dict(), "pretrained_parameters/parameters_glass.pth")
 
+methods_list = ["average", "centroid", "complete", "single", "ward"]
 mean, _ = model.encoder(torch.from_numpy(data).float())
-Z_vade = linkage(mean.detach().numpy(), "average")
-rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z_vade, rd=True)
-print("Dendrogram Purity:", compute_purity(Z_vade, cla, 6))
+for method in methods_list:
+    Z_vade = linkage(mean.detach().numpy(), method)
+    rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z_vade, rd=True)
+    print("Dendrogram Purity " + method + ":", compute_purity(Z_vade, cla, 6))
 
 
 print("###################EXPERIMENTS ON DIGIT###########################")
@@ -57,12 +59,14 @@ else:
     train(model, train_loader, 100)
     torch.save(model.state_dict(), "pretrained_parameters/parameters_digits.pth")
 
-mean, _ = model.encoder(torch.from_numpy(data).float())
-Z_vade = linkage(mean.detach().numpy()[:200], "average")
-rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z_vade, rd=True)
-print("Dendrogram Purity:", compute_purity(Z_vade, cla[:200], 10))
+methods_list = ["average", "centroid", "complete", "single", "ward"]
+for method in methods_list:
+    mean, _ = model.encoder(torch.from_numpy(data).float())
+    Z_vade = linkage(mean.detach().numpy()[:200], method)
+    rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z_vade, rd=True)
+    print("Dendrogram Purity " + method + ":", compute_purity(Z_vade, cla[:200], 10))
 
-
+'''
 print("###################EXPERIMENTS ON COVERTYPE#########################")
 cover_data, cover_targets = datasets.fetch_covtype(data_home=None, download_if_missing=True, random_state=None, shuffle=False, return_X_y=True)
 print(cover_data.shape, cover_targets.shape)
@@ -75,3 +79,4 @@ model = VaDE(7, 10, 54).to(device)
 model.pre_train(train_loader, 50)
 train(model, train_loader, 100)
 torch.save(model.state_dict(), "covertype_VaDE_parameters.pth")
+'''

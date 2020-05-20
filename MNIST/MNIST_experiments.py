@@ -1,7 +1,7 @@
 from model import *
 import numpy as np
 from util import *
-from vae import *
+#from vae import *
 
 import argparse
 
@@ -22,6 +22,7 @@ if __name__ == "__main__":
     
     SUBSAMPLE_SIZE = args.subsampling
     repeat = args.experiments_repeat
+    method = args.method
     dataset = datasets.MNIST('../data', train=True, download=True,
                    transform=transforms.ToTensor())
     mnist_data, cla = dataset.data.numpy().reshape(-1, 784) / 255, dataset.targets.numpy()
@@ -32,18 +33,18 @@ if __name__ == "__main__":
     model = VaDE()
     model.load_state_dict(torch.load("pretrained_parameters/parameters_vade_linear_10classes_mnist.pth", map_location=torch.device('cpu')))
     # begin evaluation 
-    print("VAE DP:", compute_purity_average(vae, mnist_data, cla, 10, 128, repeat, eval = "VAE", VERBOSE = True))
-    print("VaDE transformed DP:", compute_purity_average(model, mnist_data, cla, 10, 128, repeat, eval = "VaDE", transform=True, VERBOSE = True))
-    print("VaDE DP:", compute_purity_average(model, mnist_data, cla, 10, 128, repeat, eval = "VaDE", VERBOSE = True))
-    print("PCA DP:", compute_purity_average(model, mnist_data, cla, 10, 128, repeat, eval = "PCA", VERBOSE = True))
-    print("Origin DP:", compute_purity_average(model, mnist_data, cla, 10, 128, repeat, eval = "Origin", VERBOSE = True))
+    print("VAE DP:", compute_purity_average(vae, mnist_data, cla, 10, 128, repeat, eval = "VAE", VERBOSE = True, method = method))
+    print("VaDE transformed DP:", compute_purity_average(model, mnist_data, cla, 10, 128, repeat, eval = "VaDE", transform=True, VERBOSE = True, method = method))
+    print("VaDE DP:", compute_purity_average(model, mnist_data, cla, 10, 128, repeat, eval = "VaDE", VERBOSE = True, method = method))
+    print("PCA DP:", compute_purity_average(model, mnist_data, cla, 10, 128, repeat, eval = "PCA", VERBOSE = True, method = method))
+    print("Origin DP:", compute_purity_average(model, mnist_data, cla, 10, 128, repeat, eval = "Origin", VERBOSE = True, method = method))
     
     
-    print("VAE MW:", compute_MW_objective_average(vae, mnist_data, cla, 10, 128, repeat, eval = "VAE", VERBOSE = True))
-    print("VaDE transformed MW:", compute_MW_objective_average(model, mnist_data, cla, 10, 128, repeat, eval = "VaDE",transform=True, VERBOSE = True))
-    print("VaDE MW:", compute_MW_objective_average(model, mnist_data, cla, 10, 128, repeat, eval = "VaDE", VERBOSE = True))
-    print("PCA MW:", compute_MW_objective_average(model, mnist_data, cla, 10, 128, repeat, eval = "PCA", VERBOSE = True))
-    print("Origin MW:", compute_MW_objective_average(model, mnist_data, cla, 10, 128, repeat, eval = "Origin", VERBOSE = True))
+    print("VAE MW:", compute_MW_objective_average(vae, mnist_data, cla, 10, 128, repeat, eval = "VAE", VERBOSE = True, method = method))
+    print("VaDE transformed MW:", compute_MW_objective_average(model, mnist_data, cla, 10, 128, repeat, eval = "VaDE",transform=True, VERBOSE = True, method = method))
+    print("VaDE MW:", compute_MW_objective_average(model, mnist_data, cla, 10, 128, repeat, eval = "VaDE", VERBOSE = True, method = method))
+    print("PCA MW:", compute_MW_objective_average(model, mnist_data, cla, 10, 128, repeat, eval = "PCA", VERBOSE = True, method = method))
+    print("Origin MW:", compute_MW_objective_average(model, mnist_data, cla, 10, 128, repeat, eval = "Origin", VERBOSE = True, method = method))
 
     
     

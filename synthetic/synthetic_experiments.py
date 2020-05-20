@@ -36,27 +36,32 @@ if __name__ == "__main__":
 
     #generate synthetic data
     train_loader, synthetic_data, cla = create_data_loader(400, N_CLASS,MARGIN,VAR,DIM,N)
+    #train VAE
+    vae = VAE(DIM, HID_DIM)
+    train_vae(vae, train_loader, 80)
+    torch.save(vae.state_dict(), "parameters/VAE_parameters_C{}_M{}.pth".format(args.n_class, args.margin))
+    #model.load_state_dict(torch.load("parameters/VAE_parameters_C{}_M{}.pth".format(args.n_class, args.margin)))
     # train VaDE
     model = VaDE(N_CLASS, HID_DIM, DIM)
-    model.pre_train(train_loader,pre_epoch=50)
-    train(model, train_loader, 80)
-    torch.save(model.state_dict(), "VaDE_parameters_C{}_M{}.pth".format(args.n_class, args.margin))
-    #model.load_state_dict(torch.load("VaDE_parameters_C{}_M{}.pth".format(args.n_class, args.margin)))
+    #model.pre_train(train_loader,pre_epoch=50)
+    #train(model, train_loader, 80)
+    #torch.save(model.state_dict(), "parameters/VaDE_parameters_C{}_M{}.pth".format(args.n_class, args.margin))
+    model.load_state_dict(torch.load("parameters/VaDE_parameters_C{}_M{}.pth".format(args.n_class, args.margin)))
     # begin evaluation 
-    subsample_index = np.arange(100)
-    for i in range(1, N_CLASS):
-        subsample_index = np.concatenate([subsample_index, i * N + np.arange(SUBSAMPLE_SIZE)])
-
+    
+    _, vae_mean, _ = vae(torch.from_numpy(synthetic_data).float())
     mean, _ = model.encoder(torch.from_numpy(synthetic_data).float())
     scaled_mean = transformation(model, synthetic_data)
     pca = PCA(n_components = HID_DIM)
     projection = pca.fit_transform(synthetic_data)
+    print("VAE:", compute_purity_average(vae_mean.detach().numpy(), cla, N_CLASS, 1024, 50, method = args.linkage_method))
     print("Transform:", compute_purity_average(scaled_mean.detach().numpy(), cla, N_CLASS, 1024, 50, method = args.linkage_method))
     print("VaDE:", compute_purity_average(mean.detach().numpy(), cla, N_CLASS, 1024, 50, method = args.linkage_method))
     print("PCA:", compute_purity_average(projection, cla, N_CLASS, 1024, 50, method = args.linkage_method))
     print("Origin:", compute_purity_average(synthetic_data, cla, N_CLASS, 1024, 50, method = args.linkage_method))
     
-    print(compute_MW_objective_average(model, scaled_mean.detach().numpy(), cla, 1024, 50, method = args.linkage_method))
-    print(compute_MW_objective_average(model, mean.detach().numpy(), cla, 1024, 50, method = args.linkage_method))
-    print(compute_MW_objective_average(model, projection, cla, 1024, 50, method = args.linkage_method))
-    print(compute_MW_objective_average(model, synthetic_data, cla, 1024, 50, method = args.linkage_method))
+    print(compute_MW_objective_average(N_CLASS, vae_mean.detach().numpy(), cla, 1024, 50, method = args.linkage_method))
+    print(compute_MW_objective_average(N_CLASS, scaled_mean.detach().numpy(), cla, 1024, 50, method = args.linkage_method))
+    print(compute_MW_objective_average(N_CLASS, mean.detach().numpy(), cla, 1024, 50, method = args.linkage_method))
+    print(compute_MW_objective_average(N_CLASS, projection, cla, 1024, 50, method = args.linkage_method))
+    print(compute_MW_objective_average(N_CLASS, synthetic_data, cla, 1024, 50, method = args.linkage_method))

@@ -4,6 +4,8 @@ from scipy import cluster
 
 import numpy as np
 import torch
+from torch import nn, optim
+from torch.nn import functional as F
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -21,23 +23,29 @@ def transformation(model, data, rate = 2):
     scaled_mean = (mean - cluster_means) + scaled_cluster_means
     return scaled_mean.detach()
 
-def compute_purity_average(data, cla, n_class = 8,  num = 1024, repeat = 50, method = "ward", VERBOSE = False):
+def compute_purity_average(data, cla, n_class = 8,  num = 1024, repeat = 50, method = "ward", VERBOSE = False, N = 2000):
     purity = []
     for i in range(repeat):
         if i % 10 == 0 and VERBOSE:
             print("{:4.2f}% finished".format(i/repeat * 100))
-        index = np.random.choice(np.arange(len(data)), num)
+        #index = np.random.choice(np.arange(len(data)), num)
+        index = np.random.choice(np.arange(N), num // n_class)
+        for i in range(1, n_class):
+            index = np.concatenate([index, i * N + np.random.choice(np.arange(N), num // n_class)])
         Z = linkage(data[index], method)
         purity.append(compute_purity(Z, cla[index], n_class))
     purity = np.array(purity)
     return np.mean(purity), np.std(purity)
 
-def compute_MW_objective_average(model, data, cla, num = 1024, repeat = 50, method = "ward", VERBOSE = False):
+def compute_MW_objective_average(n_class, data, cla, num = 1024, repeat = 50, method = "ward", VERBOSE = False, N = 2000):
     MW = []
     for i in range(repeat):
         if i % 10 == 0 and VERBOSE:
             print("{:4.2f}% finished".format(i/repeat * 100))
-        index = np.random.choice(np.arange(len(data)), num)
+        #index = np.random.choice(np.arange(len(data)), num)
+        index = np.random.choice(np.arange(N), num // n_class)
+        for i in range(1, n_class):
+            index = np.concatenate([index, i * N + np.random.choice(np.arange(N), num // n_class)])
         Z = linkage(cla[index].reshape(-1,1), method)
         rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z, rd=True)
         max = compute_objective_gt(num, rootnode, cla[index])
@@ -64,6 +72,39 @@ def compute_pairwise_dist(data, cla, k, num):
             dist_k.append(compute_class_dist(data[index1],data[index2]))
         distance_dict.append(dist_k)
     return np.array(distance_dict)
+
+# VAE training:
+
+
+# Reconstruction + KL divergence losses summed over all elements and batch
+def loss_function(recon_x, x, mu, logvar):
+    BCE = F.mse_loss(recon_x, x, reduction='sum')
+
+    # see Appendix B from VAE paper:
+    # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
+    # https://arxiv.org/abs/1312.6114
+    # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
+    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+
+    return BCE + KLD
+
+
+def train_vae(model, train_loader, epoch = 50, lr = 2e-4):
+    model.train()
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+    for i in range(epoch):
+        train_loss = 0
+        for data in train_loader:
+            data = data
+            optimizer.zero_grad()
+            recon_batch, mu, logvar = model(data)
+            loss = loss_function(recon_batch, data, mu, logvar)
+            loss.backward()
+            train_loss += loss.item()
+            optimizer.step()
+        print('====> Epoch: {} Average loss: {:.4f}'.format(
+          i, train_loss / len(train_loader)))
+
 
 # VaDE training：
 def train(model, train_loader, epoch = 50, lr = 2e-4):

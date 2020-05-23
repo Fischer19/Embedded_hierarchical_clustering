@@ -42,10 +42,12 @@ def compute_MW_objective_average(n_class, data, cla, num = 1024, repeat = 50, me
     for i in range(repeat):
         if i % 10 == 0 and VERBOSE:
             print("{:4.2f}% finished".format(i/repeat * 100))
-        #index = np.random.choice(np.arange(len(data)), num)
+        index = np.random.choice(np.arange(len(data)), num)
+        '''
         index = np.random.choice(np.arange(N), num // n_class)
         for i in range(1, n_class):
             index = np.concatenate([index, i * N + np.random.choice(np.arange(N), num // n_class)])
+        '''
         Z = linkage(cla[index].reshape(-1,1), method)
         rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z, rd=True)
         max = compute_objective_gt(num, rootnode, cla[index])

@@ -38,19 +38,27 @@ for i in range(len(raw_data)):
     data.append(line[:-1])
     cla.append(int(line[-1]))    
 data = np.array(data).astype(np.float)
+
+train_loader = []
+for i in range(data.shape[0]//100):  
+    train_loader.append(torch.from_numpy(data[i*100:(i+1)*100]).float())
+
+
 cla = np.array(cla)
 
-model = VaDE(10, 8, 64)
-pca = PCA(n_components = 8)
+model = VaDE(10, 10, 64, [50,50,100])
+pca = PCA(n_components = 10)
 
 
 if  os.path.exists('./pretrained_parameters/parameters_digits.pth'):
     model.load_state_dict(torch.load('./pretrained_parameters/parameters_digits.pth'))
 else:
-
+    
     model.pre_train(train_loader, 50)
     train(model, train_loader, 200)
     torch.save(model.state_dict(), "pretrained_parameters/parameters_digits.pth")
+
+#train(model, train_loader, 100, lr = 5e-4)    
 
 mean, _ = model.encoder(torch.from_numpy(data).float())
 scaled_mean = transformation(model, data, 3)
@@ -58,28 +66,22 @@ projection = pca.fit_transform(data)
 methods_list = ["average", "centroid", "complete", "single", "ward"]
 
 for method in methods_list:
-    Z_vade = linkage(data[:200], method)
-    rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z_vade, rd=True)
-    print("Trans Dendrogram Purity " + method + ":", compute_purity(Z_vade, cla[:200], 10))
     
     Z_vade = linkage(mean.detach().numpy()[:200], method)
     rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z_vade, rd=True)
-    print("VaDE Dendrogram Purity " + method + ":", compute_purity(Z_vade, cla[:200], 10))
+    print("VaDE Dendrogram Purity " + method + ":", compute_purity(Z_vade, cla[:200], 8))
     
     Z_pca = linkage(projection[:200], method)
     rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z_pca, rd=True)
-    print("PCA Dendrogram Purity " + method + ":", compute_purity(Z_pca, cla[:200], 10))
+    print("PCA Dendrogram Purity " + method + ":", compute_purity(Z_pca, cla[:200], 8))
     
     Z_pca = linkage(scaled_mean[:200], method)
     rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z_pca, rd=True)
-    print("Origin Dendrogram Purity " + method + ":", compute_purity(Z_pca, cla[:200], 10))
+    print("Trans Dendrogram Purity " + method + ":", compute_purity(Z_pca, cla[:200], 8))
 
     Z = linkage(cla[:200].reshape(-1,1), method)
     rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z, rd=True)
     max = compute_objective_gt(200, rootnode, cla[:200])
-    Z = linkage(data[:200], method)
-    rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z, rd=True)
-    print("Trans MW:", compute_objective_gt(200, rootnode, cla[:200]) / max)
     
     Z = linkage(mean.detach().numpy()[:200], method)
     rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z, rd=True)
@@ -91,7 +93,7 @@ for method in methods_list:
     
     Z = linkage(scaled_mean[:200], method)
     rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z, rd=True)
-    print("Origin MW:", compute_objective_gt(200, rootnode, cla[:200]) / max)
+    print("Trans MW:", compute_objective_gt(200, rootnode, cla[:200]) / max)
 
 
 print("###################EXPERIMENTS ON GLASS##########################")

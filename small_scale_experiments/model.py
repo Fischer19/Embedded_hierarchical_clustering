@@ -11,10 +11,10 @@ import os
 
 
 class VaDE(nn.Module):
-    def __init__(self,nClusters, hid_dim, input_dim = 100):
+    def __init__(self,nClusters, hid_dim, input_dim = 100, inter_dims = [50,50,100]):
         super(VaDE,self).__init__()
-        self.encoder=Encoder(input_dim, hid_dim=hid_dim)
-        self.decoder=Decoder(input_dim, hid_dim=hid_dim)
+        self.encoder=Encoder(input_dim, hid_dim=hid_dim, inter_dims = [50,50,100])
+        self.decoder=Decoder(input_dim, hid_dim=hid_dim, inter_dims = [50,50,100])
 
         self.pi_=nn.Parameter(torch.FloatTensor(nClusters,).fill_(1)/nClusters,requires_grad=True)
         self.mu_c=nn.Parameter(torch.FloatTensor(nClusters,hid_dim).fill_(0),requires_grad=True)
@@ -149,7 +149,7 @@ class Encoder(nn.Module):
 
         self.encoder=nn.Sequential(
             *block(input_dim,inter_dims[0]),
-            *block(inter_dims[0],inter_dims[1]),
+            #*block(inter_dims[0],inter_dims[1]),
             *block(inter_dims[1],inter_dims[2]),
         )
 
@@ -171,7 +171,7 @@ class Decoder(nn.Module):
         self.decoder=nn.Sequential(
             *block(hid_dim,inter_dims[-1]),
             *block(inter_dims[-1],inter_dims[-2]),
-            *block(inter_dims[-2],inter_dims[-3]),
+            #*block(inter_dims[-2],inter_dims[-3]),
             nn.Linear(inter_dims[-3],input_dim),
             #nn.Sigmoid()
         )

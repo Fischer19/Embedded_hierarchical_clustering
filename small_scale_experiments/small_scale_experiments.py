@@ -23,7 +23,7 @@ def transformation(model, data, rate = 2, cla = None):
 
 print("###################EXPERIMENTS ON DIGIT###########################")
 
-with open("data/optdigits.tra") as f:
+with open("data/optdigits.tes") as f:
     raw_data = f.readlines()
 data = []
 cla = []
@@ -31,7 +31,7 @@ for i in range(len(raw_data)):
     line = raw_data[i].split(',')
     data.append(line[:-1])
     cla.append(int(line[-1]))
-with open("data/optdigits.tes") as f:
+with open("data/optdigits.tra") as f:
     raw_data = f.readlines()
 for i in range(len(raw_data)):
     line = raw_data[i].split(',')
@@ -40,8 +40,8 @@ for i in range(len(raw_data)):
 data = np.array(data).astype(np.float)
 
 train_loader = []
-for i in range(data.shape[0]//100):  
-    train_loader.append(torch.from_numpy(data[i*100:(i+1)*100]).float())
+for i in range(data.shape[0]//500):  
+    train_loader.append(torch.from_numpy(data[i*500:(i+1)*500]).float())
 
 
 cla = np.array(cla)
@@ -49,6 +49,10 @@ cla = np.array(cla)
 model = VaDE(10, 10, 64, [50,50,100])
 pca = PCA(n_components = 10)
 
+vae = VAE(64,10)
+#train_vae(vae, train_loader, 500, lr = 5e-4)
+#torch.save(vae.state_dict(), "pretrained_parameters/VAE_parameters.pth")
+vae.load_state_dict(torch.load("pretrained_parameters/VAE_parameters.pth"))
 
 if  os.path.exists('./pretrained_parameters/parameters_digits.pth'):
     model.load_state_dict(torch.load('./pretrained_parameters/parameters_digits.pth'))
@@ -61,39 +65,61 @@ else:
 #train(model, train_loader, 100, lr = 5e-4)    
 
 mean, _ = model.encoder(torch.from_numpy(data).float())
+_, vae_mean, _ = vae(torch.from_numpy(data).float())
 scaled_mean = transformation(model, data, 3)
 projection = pca.fit_transform(data)
 methods_list = ["average", "centroid", "complete", "single", "ward"]
+index = np.arange(200)
+'''
+for i in range(25):
+    index = np.arange(i * 200, (i+1) * 200)
+    
+    Z_vade = linkage(mean.detach().numpy()[index], "ward")
+    rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z_vade, rd=True)
+    print("VaDE Dendrogram Purity :", compute_purity(Z_vade, cla[index], 10))
+    
+    Z_pca = linkage(projection[index], "ward")
+    rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z_pca, rd=True)
+    print("PCA Dendrogram Purity :", compute_purity(Z_pca, cla[index], 10))
+'''
 
 for method in methods_list:
     
-    Z_vade = linkage(mean.detach().numpy()[:200], method)
+    Z_vae = linkage(vae_mean.detach().numpy()[index], method)
+    rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z_vae, rd=True)
+    print("VAE Dendrogram Purity " + method + ":", compute_purity(Z_vae, cla[index], 10))
+    
+    Z_vade = linkage(mean.detach().numpy()[index], method)
     rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z_vade, rd=True)
-    print("VaDE Dendrogram Purity " + method + ":", compute_purity(Z_vade, cla[:200], 8))
+    print("VaDE Dendrogram Purity " + method + ":", compute_purity(Z_vade, cla[index], 10))
     
-    Z_pca = linkage(projection[:200], method)
+    Z_pca = linkage(projection[index], method)
     rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z_pca, rd=True)
-    print("PCA Dendrogram Purity " + method + ":", compute_purity(Z_pca, cla[:200], 8))
+    print("PCA Dendrogram Purity " + method + ":", compute_purity(Z_pca, cla[index], 10))
     
-    Z_pca = linkage(scaled_mean[:200], method)
+    Z_pca = linkage(scaled_mean[index], method)
     rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z_pca, rd=True)
-    print("Trans Dendrogram Purity " + method + ":", compute_purity(Z_pca, cla[:200], 8))
+    print("Trans Dendrogram Purity " + method + ":", compute_purity(Z_pca, cla[index], 10))
 
-    Z = linkage(cla[:200].reshape(-1,1), method)
+    Z = linkage(cla[index].reshape(-1,1), method)
     rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z, rd=True)
-    max = compute_objective_gt(200, rootnode, cla[:200])
+    max = compute_objective_gt(200, rootnode, cla[index])
     
-    Z = linkage(mean.detach().numpy()[:200], method)
+    Z = linkage(vae_mean.detach().numpy()[index], method)
     rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z, rd=True)
-    print("VaDE MW:", compute_objective_gt(200, rootnode, cla[:200]) / max)
+    print("VAE MW:", compute_objective_gt(200, rootnode, cla[index]) / max)
     
-    Z = linkage(projection[:200], method)
+    Z = linkage(mean.detach().numpy()[index], method)
     rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z, rd=True)
-    print("PCA MW:", compute_objective_gt(200, rootnode, cla[:200]) / max)
+    print("VaDE MW:", compute_objective_gt(200, rootnode, cla[index]) / max)
     
-    Z = linkage(scaled_mean[:200], method)
+    Z = linkage(projection[index], method)
     rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z, rd=True)
-    print("Trans MW:", compute_objective_gt(200, rootnode, cla[:200]) / max)
+    print("PCA MW:", compute_objective_gt(200, rootnode, cla[index]) / max)
+    
+    Z = linkage(scaled_mean[index], method)
+    rootnode, nodelist = scipy.cluster.hierarchy.to_tree(Z, rd=True)
+    print("Trans MW:", compute_objective_gt(200, rootnode, cla[index]) / max)
 
 
 print("###################EXPERIMENTS ON GLASS##########################")

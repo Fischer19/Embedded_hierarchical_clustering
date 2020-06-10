@@ -24,7 +24,7 @@ def compute_purity_average(model, data, cla, n_class = 10, num = 128, repeat = 5
     purity = []
     print("repeat:", repeat)
     mnist_data = []
-    for i in range(25):
+    for i in range(10):
         index = np.where(cla == i)
         mnist_data.append(data[index])
         
@@ -65,7 +65,7 @@ def compute_MW_objective_average(model, data, cla, n_class = 10, num = 1024, rep
     MW = []
     print("repeat:", repeat)
     mnist_data = []
-    for i in range(25):
+    for i in range(10):
         index = np.where(cla == i)
         mnist_data.append(data[index])
         

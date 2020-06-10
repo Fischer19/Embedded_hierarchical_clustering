@@ -20,7 +20,7 @@ def transformation(model, data, rate = 1.5):
     scaled_mean = (mean - cluster_means) + scaled_cluster_means
     return scaled_mean.detach()
 
-def compute_purity_average(model, data, cla, n_class = 10, num = 128, repeat = 50, method = "ward", eval = "VaDE", transform = False, VERBOSE = False):
+def compute_purity_average(model, data, cla, n_class = 10, num = 128, repeat = 50, method = "ward", eval = "VaDE", transform = False, VERBOSE = False, rate = 1.5):
     purity = []
     print("repeat:", repeat)
     mnist_data = []
@@ -50,7 +50,7 @@ def compute_purity_average(model, data, cla, n_class = 10, num = 128, repeat = 5
             eval_data = eval_data.detach().numpy()
         if eval == "VaDE":
             if transform:
-                eval_data = transformation(model, data[index])
+                eval_data = transformation(model, data[index], rate)
             else:
                 eval_data, _ = model.encoder(torch.from_numpy(data[index]).float())
                 eval_data = eval_data.detach().numpy()
@@ -61,7 +61,7 @@ def compute_purity_average(model, data, cla, n_class = 10, num = 128, repeat = 5
     purity = np.array(purity)
     return np.mean(purity), np.std(purity)
 
-def compute_MW_objective_average(model, data, cla, n_class = 10, num = 1024, repeat = 50, method = "ward", eval = "VaDE", transform = False, VERBOSE = False):
+def compute_MW_objective_average(model, data, cla, n_class = 10, num = 1024, repeat = 50, method = "ward", eval = "VaDE", transform = False, VERBOSE = False, rate = 1.5):
     MW = []
     print("repeat:", repeat)
     mnist_data = []

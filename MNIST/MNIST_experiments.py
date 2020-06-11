@@ -33,14 +33,6 @@ if __name__ == "__main__":
     model = VaDE()
     model.load_state_dict(torch.load("pretrained_parameters/parameters_vade_linear_10classes_mnist.pth", map_location=torch.device('cpu')))
     # begin evaluation 
-    '''
-    methods_list = ["average", "centroid", "complete", "single", "ward"]
-    for method in methods_list:
-        print(method)
-        print("VaDE transformed DP:", compute_purity_average(model, mnist_data, cla, 10, 128, repeat, eval = "VaDE", transform=True, VERBOSE = True, method = method))
-        print("VaDE transformed MW:", compute_MW_objective_average(model, mnist_data, cla, 10, 128, repeat, eval = "VaDE",transform=True, VERBOSE = True, method = method))
-    
-    '''
     print("VAE DP:", compute_purity_average(vae, mnist_data, cla, 10, 128, repeat, eval = "VAE", VERBOSE = True, method = method))
     print("VaDE transformed DP:", compute_purity_average(model, mnist_data, cla, 10, 128, repeat, eval = "VaDE", transform=True, VERBOSE = True, method = method))
     print("VaDE DP:", compute_purity_average(model, mnist_data, cla, 10, 128, repeat, eval = "VaDE", VERBOSE = True, method = method))
@@ -53,5 +45,6 @@ if __name__ == "__main__":
     print("VaDE MW:", compute_MW_objective_average(model, mnist_data, cla, 10, 128, repeat, eval = "VaDE", VERBOSE = True, method = method))
     print("PCA MW:", compute_MW_objective_average(model, mnist_data, cla, 10, 128, repeat, eval = "PCA", VERBOSE = True, method = method))
     print("Origin MW:", compute_MW_objective_average(model, mnist_data, cla, 10, 128, repeat, eval = "Origin", VERBOSE = True, method = method))
+
     
     

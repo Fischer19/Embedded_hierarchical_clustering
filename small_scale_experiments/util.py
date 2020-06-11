@@ -11,8 +11,6 @@ from sklearn.manifold import TSNE
 import scipy
 from scipy.cluster.hierarchy import linkage, dendrogram
 from tqdm import tqdm
-from torch import nn, optim
-from torch.nn import functional as F
 
 # evaluation:
 def compute_purity_average(data, cla, n_class = 8,  num = 1024, repeat = 50, method = "ward", VERBOSE = False):
@@ -77,38 +75,7 @@ def train(model, train_loader, epoch = 50, lr = 2e-4):
             L+=loss.detach().cpu().numpy()
         print(L/len(train_loader))
 
-# VAE training:
-def loss_function(recon_x, x, mu, logvar):
-    BCE = F.mse_loss(recon_x, x)
 
-    # see Appendix B from VAE paper:
-    # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
-    # https://arxiv.org/abs/1312.6114
-    # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
-    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-
-    return BCE #+ KLD
-
-
-def train_vae(model, train_loader, epoch = 50, lr = 2e-4):
-    model.train()
-    optimizer = optim.Adam(model.parameters(), lr=lr)
-    for i in range(epoch):
-        train_loss = 0
-        for data in train_loader:
-            data = data
-            optimizer.zero_grad()
-            recon_batch, mu, logvar = model(data)
-            loss = loss_function(recon_batch, data, mu, logvar)
-            loss.backward()
-            train_loss += loss.item()
-            optimizer.step()
-        print('====> Epoch: {} Average loss: {:.4f}'.format(
-          i, train_loss / len(train_loader)))
-
-        
-        
-        
 # synthetic datset generation
 
 def HGMM(n_class, dim, margin):

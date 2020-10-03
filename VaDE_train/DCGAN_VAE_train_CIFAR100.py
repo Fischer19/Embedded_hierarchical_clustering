@@ -32,9 +32,9 @@ class Decoder(nn.Module):
         self.deconv2_bn = nn.BatchNorm2d(d*4)
         self.deconv3 = nn.ConvTranspose2d(d*4, d*2, 4, 2, 1)
         self.deconv3_bn = nn.BatchNorm2d(d*2)
-        self.deconv4 = nn.ConvTranspose2d(d*2, d, 4, 2, 1)
-        self.deconv4_bn = nn.BatchNorm2d(d)
-        self.deconv5 = nn.ConvTranspose2d(d, 1, 4, 2, 1) # 1 4 2 1
+        self.deconv4 = nn.ConvTranspose2d(d*2, 1, 4, 2, 1)
+        #self.deconv4_bn = nn.BatchNorm2d(d)
+        #self.deconv5 = nn.ConvTranspose2d(d, 1, 4, 2, 1) # 1 4 2 1
 
     # weight_init
     def weight_init(self, mean, std):
@@ -44,11 +44,16 @@ class Decoder(nn.Module):
     # forward method
     def forward(self, input):
         # x = F.relu(self.deconv1(input))
+        print("Decoder")
         x = F.relu(self.deconv1_bn(self.deconv1(input)))
+        print(x.shape)
         x = F.relu(self.deconv2_bn(self.deconv2(x)))
+        print(x.shape)
         x = F.relu(self.deconv3_bn(self.deconv3(x)))
-        x = F.relu(self.deconv4_bn(self.deconv4(x)))
-        x = torch.sigmoid(self.deconv5(x))
+        print(x.shape)
+        #x = F.relu(self.deconv4_bn(self.deconv4(x)))
+        #print(x.shape)
+        x = torch.sigmoid(self.deconv4(x))
         print(x.shape)
         return x
 
@@ -65,7 +70,7 @@ class Encoder(nn.Module):
         self.conv3_bn = nn.BatchNorm2d(d*4)
         self.conv4 = nn.Conv2d(d*4, d*8, 4, 2, 1)
         self.conv4_bn = nn.BatchNorm2d(d*8)
-        self.conv5 = nn.Conv2d(d*8, d*8, 4, 1, 0) # 4 1 0
+        self.conv5 = nn.Conv2d(d*8, d*8, 2, 1, 0) # 4 1 0
         
         self.mu_l = nn.Linear(d*8, hid_dim)
         self.log_sigma2_l = nn.Linear(d*8, hid_dim)
@@ -79,10 +84,15 @@ class Encoder(nn.Module):
 
     # forward method
     def forward(self, input):
+        print("Encoder:")
         x = F.leaky_relu(self.conv1(input), 0.2)
+        print(x.shape)
         x = F.leaky_relu(self.conv2_bn(self.conv2(x)), 0.2)
+        print(x.shape)
         x = F.leaky_relu(self.conv3_bn(self.conv3(x)), 0.2)
+        print(x.shape)
         x = F.leaky_relu(self.conv4_bn(self.conv4(x)), 0.2)
+        print(x.shape)
         x = F.leaky_relu(self.conv5(x), 0.2)
         print(x.shape)
         mu=self.mu_l(x.view(-1, self.d * 8))

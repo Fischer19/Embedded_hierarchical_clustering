@@ -145,7 +145,7 @@ class VaDE(nn.Module):
 
                     z,_=self.encoder(x.view(-1, 1, self.input_dim, self.input_dim))
                     x_=self.decoder(z.view(-1, self.hid_dim, 1,1))
-                    loss=Loss(x.view(-1, 64 * 64),x_.view(-1, 64 * 64))
+                    loss=Loss(x.view(-1, self.input_dim * self.input_dim),x_.view(-1, self.input_dim * self.input_dim))
 
                     L+=loss.detach().cpu().numpy()
 
@@ -216,7 +216,7 @@ class VaDE(nn.Module):
 
             x_pro=self.decoder(z.view(-1, self.hid_dim, 1,1))
 
-            L_rec+=F.binary_cross_entropy(x_pro.view(-1, 64 * 64),x.view(-1, 64 * 64))
+            L_rec+=F.binary_cross_entropy(x_pro.view(-1, self.input_dim * self.input_dim),x.view(-1, self.input_dim * self.input_dim))
 
         L_rec/=L
 
@@ -261,7 +261,7 @@ import pickle
 import torchvision
 
 def get_cifar100(data_dir='./data/mnist/',batch_size=128):
-    img_size = 64
+    img_size = 32
     transform = transforms.Compose([
             transforms.Scale(img_size),
             transforms.ToTensor()
@@ -277,7 +277,7 @@ if __name__ == "__main__":
     hid_dim = 10
     DL,_=get_cifar100(batch_size = 128)
 
-    vade=VaDE(nClusters,hid_dim,64,True).to(device)
+    vade=VaDE(nClusters,hid_dim,32,True).to(device)
     
     vade.pre_train(DL,pre_epoch=50)
     # Re-initialize the weights (NaN occurs in loss otherwise)

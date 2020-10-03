@@ -130,7 +130,7 @@ class VaDE(nn.Module):
 
 
     def pre_train(self,dataloader,pre_epoch=10):
-        if  not os.path.exists('./pretrain_model.pk'):
+        if  not os.path.exists('./pretrain_model_cifar100.pk'):
 
             Loss=nn.MSELoss()
             opti=torch.optim.Adam(itertools.chain(self.encoder.parameters(),self.decoder.parameters()))
@@ -186,9 +186,9 @@ class VaDE(nn.Module):
                 self.mu_c.data = torch.from_numpy(gmm.means_).float()
                 self.log_sigma2_c.data = torch.log(torch.from_numpy(gmm.covariances_).float())
                 
-            torch.save(self.state_dict(), './pretrain_model.pk')
+            torch.save(self.state_dict(), './pretrain_model_cifar100.pk')
         else:
-            self.load_state_dict(torch.load('./pretrain_model.pk'))
+            self.load_state_dict(torch.load('./pretrain_model_cifar100.pk'))
             
 
 
@@ -260,14 +260,14 @@ from torch.utils.data import DataLoader,TensorDataset
 import pickle
 import torchvision
 
-def get_mnist(data_dir='./data/mnist/',batch_size=128):
+def get_cifar100(data_dir='./data/mnist/',batch_size=128):
     img_size = 64
     transform = transforms.Compose([
             transforms.Scale(img_size),
             transforms.ToTensor()
     ])
     train_loader = torch.utils.data.DataLoader(
-        torchvision.datasets.MNIST('../data', train=True, download=True, transform=transform),
+        torchvision.datasets.CIFAR100('../data', train=True, download=True, transform=transform),
         batch_size=batch_size, shuffle=True)
     return train_loader, img_size
 
@@ -275,7 +275,7 @@ if __name__ == "__main__":
     device = "cuda"
     nClusters = 10
     hid_dim = 10
-    DL,_=get_mnist(batch_size = 128)
+    DL,_=get_cifar100(batch_size = 128)
 
     vade=VaDE(nClusters,hid_dim,64,True).to(device)
     

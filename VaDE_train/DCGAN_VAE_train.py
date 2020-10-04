@@ -49,7 +49,6 @@ class Decoder(nn.Module):
         x = F.relu(self.deconv3_bn(self.deconv3(x)))
         x = F.relu(self.deconv4_bn(self.deconv4(x)))
         x = torch.sigmoid(self.deconv5(x))
-        print(x.shape)
         return x
 
 class Encoder(nn.Module):
@@ -84,7 +83,6 @@ class Encoder(nn.Module):
         x = F.leaky_relu(self.conv3_bn(self.conv3(x)), 0.2)
         x = F.leaky_relu(self.conv4_bn(self.conv4(x)), 0.2)
         x = F.leaky_relu(self.conv5(x), 0.2)
-        print(x.shape)
         mu=self.mu_l(x.view(-1, self.d * 8))
         log_sigma2=self.log_sigma2_l(x.view(-1, self.d * 8))
         #print(mu.shape, log_sigma2.shape)
@@ -205,20 +203,17 @@ class VaDE(nn.Module):
             z=torch.randn_like(z_mu)*torch.exp(z_sigma2_log/2)+z_mu
 
             x_pro=self.decoder(z.view(-1, self.hid_dim, 1,1))
-
             L_rec+=F.binary_cross_entropy(x_pro.view(-1, 64 * 64),x.view(-1, 64 * 64))
 
         L_rec/=L
 
         Loss=L_rec*x.size(1)
-
         pi=self.pi_
         log_sigma2_c=self.log_sigma2_c
         mu_c=self.mu_c
 
         z = torch.randn_like(z_mu) * torch.exp(z_sigma2_log / 2) + z_mu
         yita_c=torch.exp(torch.log(pi.unsqueeze(0))+self.gaussian_pdfs_log(z,mu_c,log_sigma2_c))+det
-
         yita_c=yita_c/(yita_c.sum(1).view(-1,1))#batch_size*Clusters
 
         Loss+=0.5*torch.mean(torch.sum(yita_c*torch.sum(log_sigma2_c.unsqueeze(0)+
@@ -271,7 +266,7 @@ if __name__ == "__main__":
     
     vade.pre_train(DL,pre_epoch=50)
     # Re-initialize the weights (NaN occurs in loss otherwise)
-    torch.nn.init.xavier_uniform_(vade.encoder.log_sigma2_l.weight)
+    torch.nn.init.zeros_(vade.encoder.log_sigma2_l.weight)
     opti=Adam(vade.parameters(),lr=5e-4)
     lr_s=StepLR(opti,step_size=10,gamma=0.95)
 

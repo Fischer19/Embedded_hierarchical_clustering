@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-get_ipython().system('python -m spacy download en_core_web_lg')
 import pandas as pd
 import numpy as np
 

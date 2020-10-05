@@ -22,11 +22,11 @@ if __name__ == "__main__":
 
     encoder = AutoModel.from_pretrained(MODEL_NAME)
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
-    print("{}/{} finished".fortmat(args.start, 100))
+    print("{}/{} finished".format(args.start, 100))
     for i in range(100):
         tokens_pt2 = tokenizer(newsgroups_train.data[100 * args.start + i][:512], return_tensors="pt", padding=True)
         _, pooled2 = encoder(**tokens_pt2)
         embedding = torch.cat([embedding, pooled2])
     print(embedding.shape)
 
-    torch.save(embedding, "bert_embedding_{}.pt".format(args.start))
+    torch.save(embedding, "results/bert_embedding_{}.pt".format(args.start))

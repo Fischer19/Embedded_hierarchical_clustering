@@ -151,7 +151,8 @@ class VaDE(nn.Module):
 
             x_pro=self.decoder(z)
 
-            L_rec+=F.binary_cross_entropy(x_pro,x)
+            L_rec += F.mse_loss(x_pro, x)
+            #L_rec+=F.binary_cross_entropy(x_pro,x)
 
         L_rec/=L
 

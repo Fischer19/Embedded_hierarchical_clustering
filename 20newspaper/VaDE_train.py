@@ -29,7 +29,8 @@ def get_20newsgroup(data_dir, batch_size=128, device = "cuda"):
     	X = dic["X"]
     	y = dic["y"]
     train_loader = []
-    X.to(device)
+    #X -= X.min(1, keepdim = True)[0]
+    #X /= X.max(1, keepdim = True)[0]
     y.to(device)
     for i in range(len(X) // batch_size):
     	train_loader.append([X[i*batch_size: (i+1) * batch_size].float(), y[i*batch_size:(i+1)*batch_size]])
@@ -56,7 +57,6 @@ if __name__ == "__main__":
 
     for epoch in epoch_bar:
 
-        lr_s.step()
         L=0
         for x,_ in DL:
             x=x.cuda()
@@ -85,6 +85,6 @@ if __name__ == "__main__":
         pre=np.concatenate(pre,0)
         
         ACC = cluster_acc(pre,tru)[0]*100
-
+        lr_s.step()
         epoch_bar.write('Loss={:.4f},ACC={:.4f}%,LR={:.4f}'.format(L/len(DL),ACC,lr_s.get_lr()[0]))
     torch.save(vade.module.state_dict(), "parameters/VaDE_parameters_h{}_c{}.pth".format(hid_dim, nClusters))

@@ -57,11 +57,12 @@ class VAE(nn.Module):
         return self.decode(z), mu, logvar
 
 class VaDE(nn.Module):
-    def __init__(self, nClusters = 20, hid_dim = 10, input_dim = 2000):
+    def __init__(self, nClusters = 20, hid_dim = 10, input_dim = 2000, device = "cuda"):
         super(VaDE,self).__init__()
         self.encoder=Encoder(input_dim, hid_dim=hid_dim)
         self.decoder=Decoder(input_dim, hid_dim=hid_dim)
         self.nClusters = nClusters
+        self.device = device
 
         self.pi_=nn.Parameter(torch.FloatTensor(nClusters,).fill_(1)/nClusters,requires_grad=True)
         self.mu_c=nn.Parameter(torch.FloatTensor(nClusters,hid_dim).fill_(0),requires_grad=True)
@@ -80,7 +81,8 @@ class VaDE(nn.Module):
             for _ in epoch_bar:
                 L=0
                 for x,y in dataloader:
-                    x = x.cuda()
+                    if self.device == "cuda":
+                        x = x.cuda()
                     z,_=self.encoder(x)
                     x_=self.decoder(z)
                     loss=Loss(x,x_)
@@ -99,7 +101,8 @@ class VaDE(nn.Module):
             Y = []
             with torch.no_grad():
                 for x, y in dataloader:
-                    x = x.cuda()
+                    if self.device == "cuda":
+                        x = x.cuda()
                     z1, z2 = self.encoder(x)
                     assert F.mse_loss(z1, z2) == 0
                     Z.append(z1)

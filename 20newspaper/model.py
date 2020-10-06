@@ -15,6 +15,17 @@ import itertools
 from tqdm import tqdm
 import os
 
+def cluster_acc(Y_pred, Y):
+    from sklearn.utils.linear_assignment_ import linear_assignment
+    assert Y_pred.size == Y.size
+    D = max(Y_pred.max(), Y.max())+1
+    w = np.zeros((D,D), dtype=np.int64)
+    for i in range(Y_pred.size):
+        w[Y_pred[i], Y[i]] += 1
+    ind = linear_assignment(w.max() - w)
+    return sum([w[i,j] for i,j in ind])*1.0/Y_pred.size, w
+
+
 class VAE(nn.Module):
     def __init__(self):
         super(VAE, self).__init__()

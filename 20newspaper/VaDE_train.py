@@ -37,17 +37,17 @@ def get_20newsgroup(data_dir, batch_size=128, device = "cuda"):
 
 if __name__ == "__main__":
 
-    device = "cpu"
+    device = "cuda"
     nClusters = 20
-    hid_dim = 10
+    hid_dim = 20
     DL,_=get_20newsgroup("tfidf_embedding.pk",batch_size = 128)
 
     vade=VaDE(nClusters,hid_dim,2000,device).to(device)
     
     vade.pre_train(DL,pre_epoch=50)
     # Re-initialize the weights (NaN occurs in loss otherwise)
-    torch.nn.init.zeros_(vade.encoder.log_sigma2_l.weight)
-    opti=Adam(vade.parameters(),lr=2e-3)
+    torch.nn.init.xavier_uniform_(vade.encoder.log_sigma2_l.weight)
+    opti=Adam(vade.parameters(),lr=2e-4)
     lr_s=StepLR(opti,step_size=10,gamma=0.95)
 
 

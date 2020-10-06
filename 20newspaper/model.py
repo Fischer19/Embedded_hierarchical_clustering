@@ -133,7 +133,7 @@ class VaDE(nn.Module):
     def predict(self,x):
         z_mu, z_sigma2_log = self.encoder(x)
         z = torch.randn_like(z_mu) * torch.exp(z_sigma2_log / 2) + z_mu
-        pi = self.pi_
+        pi = self.pi_ * (self.pi_ > 0) + 1e-5
         log_sigma2_c = self.log_sigma2_c
         mu_c = self.mu_c
         yita_c = torch.exp(torch.log(pi.unsqueeze(0))+self.gaussian_pdfs_log(z,mu_c,log_sigma2_c))
@@ -160,16 +160,18 @@ class VaDE(nn.Module):
         L_rec/=L
 
         Loss=L_rec*x.size(1)
-
-        pi=self.pi_
+        #print("Loss:", Loss)
+        #self.pi_[self.pi_ <= 0] = 1e-5
+        pi=self.pi_ * (self.pi_ > 0) + 1e-5
         log_sigma2_c=self.log_sigma2_c
         mu_c=self.mu_c
+        #print(pi)
 
         z = torch.randn_like(z_mu) * torch.exp(z_sigma2_log / 2) + z_mu
         yita_c=torch.exp(torch.log(pi.unsqueeze(0))+self.gaussian_pdfs_log(z,mu_c,log_sigma2_c))+det
 
         yita_c=yita_c/(yita_c.sum(1).view(-1,1))#batch_size*Clusters
-
+        #print(yita_c)
         Loss+=0.5*torch.mean(torch.sum(yita_c*torch.sum(log_sigma2_c.unsqueeze(0)+
                                                 torch.exp(z_sigma2_log.unsqueeze(1)-log_sigma2_c.unsqueeze(0))+
                                                 (z_mu.unsqueeze(1)-mu_c.unsqueeze(0)).pow(2)/torch.exp(log_sigma2_c.unsqueeze(0)),2),1))
@@ -207,7 +209,7 @@ def block(in_c,out_c):
 
 
 class Decoder(nn.Module):
-    def __init__(self,input_dim=2000,inter_dims=[500,500,2000],hid_dim=10):
+    def __init__(self,input_dim=2000,inter_dims=[100,200,1000],hid_dim=20):
         super(Decoder,self).__init__()
 
         self.decoder=nn.Sequential(
@@ -224,7 +226,7 @@ class Decoder(nn.Module):
         return x_pro
 
 class Encoder(nn.Module):
-    def __init__(self,input_dim=2000,inter_dims=[500,500,2000],hid_dim=10):
+    def __init__(self,input_dim=2000,inter_dims=[100,200,1000],hid_dim=20):
         super(Encoder,self).__init__()
 
         self.encoder=nn.Sequential(

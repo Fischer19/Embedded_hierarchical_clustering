@@ -8,6 +8,12 @@ from sklearn.manifold import TSNE
 import scipy
 from scipy.cluster.hierarchy import linkage, dendrogram
 import numpy as np
+from torch.optim import Adam
+from sklearn.mixture import GaussianMixture
+from sklearn.metrics import accuracy_score
+import itertools
+from tqdm import tqdm
+import os
 
 class VAE(nn.Module):
     def __init__(self):
@@ -63,7 +69,7 @@ class VaDE(nn.Module):
             for _ in epoch_bar:
                 L=0
                 for x,y in dataloader:
-
+                    x = x.cuda()
                     z,_=self.encoder(x)
                     x_=self.decoder(z)
                     loss=Loss(x,x_)
@@ -82,7 +88,7 @@ class VaDE(nn.Module):
             Y = []
             with torch.no_grad():
                 for x, y in dataloader:
-
+                    x = x.cuda()
                     z1, z2 = self.encoder(x)
                     assert F.mse_loss(z1, z2) == 0
                     Z.append(z1)

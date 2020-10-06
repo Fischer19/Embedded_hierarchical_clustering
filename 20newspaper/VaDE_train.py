@@ -20,23 +20,26 @@ from sklearn.mixture import GaussianMixture
 from sklearn.metrics import accuracy_score
 import numpy as np
 import os
+from model import *
 
 
-def get_20newsgroup(data_dir, batch_size=128):
+def get_20newsgroup(data_dir, batch_size=128, device = "cuda"):
     with open(data_dir, "rb") as f:
     	dic = pickle.load(f)
     	X = dic["X"]
     	y = dic["y"]
     train_loader = []
+    X.to(device)
+    y.to(device)
     for i in range(len(X) // batch_size):
-    	train_loader.append([X[i*batch_size: (i+1) * batch_size], y[i*batch_size:(i+1)*batch_size]])
+    	train_loader.append([X[i*batch_size: (i+1) * batch_size].float(), y[i*batch_size:(i+1)*batch_size]])
     return train_loader, batch_size
 
 if __name__ == "__main__":
     device = "cuda"
-    nClusters = 10
+    nClusters = 20
     hid_dim = 10
-    DL,_=get_20newsgroup(batch_size = 128)
+    DL,_=get_20newsgroup("tfidf_embedding.pk",batch_size = 128)
 
     vade=VaDE(nClusters,hid_dim,2000).to(device)
     

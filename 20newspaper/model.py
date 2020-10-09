@@ -209,7 +209,7 @@ def block(in_c,out_c):
 
 
 class Decoder(nn.Module):
-    def __init__(self,input_dim=2000,inter_dims=[100,200,1000],hid_dim=20):
+    def __init__(self,input_dim=2000,inter_dims=[200,500,1000],hid_dim=20):
         super(Decoder,self).__init__()
 
         self.decoder=nn.Sequential(
@@ -226,7 +226,7 @@ class Decoder(nn.Module):
         return x_pro
 
 class Encoder(nn.Module):
-    def __init__(self,input_dim=2000,inter_dims=[100,200,1000],hid_dim=20):
+    def __init__(self,input_dim=2000,inter_dims=[200,500,1000],hid_dim=20):
         super(Encoder,self).__init__()
 
         self.encoder=nn.Sequential(

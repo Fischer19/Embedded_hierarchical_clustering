@@ -52,9 +52,6 @@ df = pd.read_csv('data/news_group20.csv')
 df.count()
 
 
-
-df.category.value_counts().plot.barh()
-
 import re
 import string
 
